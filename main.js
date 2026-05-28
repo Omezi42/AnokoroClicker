@@ -647,11 +647,6 @@ function renderCards() {
         cardEl.className = `card ${canBuy ? '' : 'disabled'} ${isAwakened ? 'awakened' : ''}`;
         cardEl.dataset.id = card.id;
         
-        cardEl.addEventListener('click', (e) => {
-            if (e.target.classList.contains('btn-awaken')) return;
-            buyCard(card.id);
-        });
-        
         const isNew = card.count === 0 && canBuy;
         const newTag = isNew ? '<span style="color:red; font-size:12px; font-weight:bold; margin-left:10px;">NEW!</span>' : '';
 
@@ -668,10 +663,12 @@ function renderCards() {
         if (gameState.unlockedFeatures.awakening && !isAwakened) {
             const awakenCost = getAwakenCost(card);
             const canAwaken = gameState.energy >= awakenCost;
-            awakenHtml = `<button class="btn-awaken" ${canAwaken ? '' : 'style="opacity:0.5;"'} onclick="awakenCard('${card.id}')">★覚醒 (必要: ${formatNumber(awakenCost)})</button>`;
+            awakenHtml = `<button class="btn-awaken" ${canAwaken ? '' : 'style="opacity:0.5;"'} onclick="awakenCard('${card.id}')">★覚醒 (${formatNumber(awakenCost)})</button>`;
         } else if (isAwakened) {
-            awakenHtml = `<div style="font-size:10px; color:magenta; font-weight:bold;">✨ 覚醒済み ✨</div>`;
+            awakenHtml = `<div style="font-size:10px; color:magenta; font-weight:bold; display: flex; align-items: center; justify-content: center; flex: 1;">✨覚醒済✨</div>`;
         }
+
+        const buyBtnText = `購入x${buyMode === 'MAX' ? displayAmount : buyMode} (${formatNumber(displayCost)})`;
 
         cardEl.innerHTML = `
             <div class="card-image-container" title="${card.skill.name}: ${card.skill.desc}">
@@ -680,8 +677,10 @@ function renderCards() {
             <div class="card-info">
                 <div class="card-name">${card.name} ${newTag} ${equipTag}</div>
                 <div class="card-desc">${card.descPrefix} ${formatNumber(card.value * multiplier)} <br><span style="font-size:10px; color:#ff9800;">★${card.skill.name}</span></div>
-                <div class="card-cost">コスト(x${buyMode === 'MAX' ? displayAmount : buyMode}): ${formatNumber(displayCost)}</div>
-                ${awakenHtml}
+                <div style="display: flex; gap: 5px; margin-top: 5px;">
+                    <button class="btn-buy-card" onclick="buyCard('${card.id}')">${buyBtnText}</button>
+                    ${awakenHtml}
+                </div>
             </div>
             <div class="card-count">${card.count}</div>
         `;
