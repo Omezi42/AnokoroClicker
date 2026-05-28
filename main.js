@@ -28,8 +28,8 @@ let gameState = {
 const systemNodes = {
     node_alpha: { id: 'node_alpha', name: 'SYS.CORE_EXPANSION', desc: 'Global Production +100%', maxLevel: 100, cost: (lv) => 1 + lv },
     node_beta: { id: 'node_beta', name: 'SYS.COST_COMPRESSION', desc: 'Purchase Scaling Ratio -0.01', maxLevel: 10, cost: (lv) => 3 + lv * 2 },
-    node_gamma: { id: 'node_gamma', name: 'SYS.PROBABILITY_OVERRIDE', desc: 'Rare Anomaly Spawn Rate +20%', maxLevel: 5, cost: (lv) => 5 + lv * 5 },
-    node_delta: { id: 'node_delta', name: 'SYS.REWARD_AMPLIFIER', desc: 'Rare Anomaly Yield x2', maxLevel: 10, cost: (lv) => 2 + lv * 3 },
+    node_gamma: { id: 'node_gamma', name: 'SYS.PROBABILITY_OVERRIDE', desc: 'Rare Anomaly Spawn Rate +5%', maxLevel: 5, cost: (lv) => 5 + lv * 5 },
+    node_delta: { id: 'node_delta', name: 'SYS.REWARD_AMPLIFIER', desc: 'Rare Anomaly Yield +50%', maxLevel: 10, cost: (lv) => 2 + lv * 3 },
     node_epsilon: { id: 'node_epsilon', name: 'SYS.AWAKEN_OPTIMIZATION', desc: 'Awakening Energy Requirement / 10', maxLevel: 5, cost: (lv) => 10 + lv * 10 }
 };
 
@@ -931,9 +931,9 @@ function spawnGoldenCard() {
     if (goldenCardEl) return;
     
     const gammaLv = getSkillLevel('node_gamma');
-    const spawnRate = 0.1 + (gammaLv * 0.2); // max 1.1 = always spawns
+    const spawnRate = 0.05 + (gammaLv * 0.05); // max 0.30 (30% chance every 10 sec)
     
-    if (Math.random() > spawnRate && spawnRate < 1) return;
+    if (Math.random() > spawnRate) return;
 
     goldenCardEl = document.createElement('div');
     goldenCardEl.className = 'golden-card';
@@ -944,7 +944,7 @@ function spawnGoldenCard() {
         gameState.goldenClicks++;
         
         const deltaLv = getSkillLevel('node_delta');
-        const rewardMult = 1 * Math.pow(2, deltaLv);
+        const rewardMult = 1 + (deltaLv * 0.5); // max 3.5x
         
         const reward = Math.max(gameState.energyPerClick * 100, gameState.energyPerSecond * 60 * 15) * rewardMult;
         gameState.energy += reward;
