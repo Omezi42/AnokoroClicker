@@ -33,8 +33,15 @@ const systemNodes = {
     node_epsilon: { id: 'node_epsilon', name: 'SYS.AWAKEN_OPTIMIZATION', desc: 'Awakening Energy Requirement / 10', maxLevel: 5, cost: (lv) => 10 + lv * 10 }
 };
 
-let buyMode = 1;
+let buyMode = '1';
 let selectingDeckSlot = -1;
+
+// デッキ詳細モーダル用データ
+let lastGlobalSynergyMultiplier = 1.0;
+let lastIndividualBonus = {};
+let lastAchievementMultiplier = 1.0;
+let lastAlphaBonus = 1.0;
+let lastDeckDetails = [];
 let cards = window.generatedCards || [];
 
 const achievementsList = [
@@ -182,6 +189,26 @@ function init() {
             renderDeck();
             document.getElementById('deck-modal').style.display = 'none';
         }
+    });
+
+    // 遊び方・ヘルプモーダル
+    document.getElementById('btn-help-open').addEventListener('click', () => {
+        document.getElementById('help-modal').style.display = 'flex';
+    });
+    document.getElementById('btn-help-close').addEventListener('click', () => {
+        document.getElementById('help-modal').style.display = 'none';
+    });
+
+    // ボーナス詳細モーダル
+    const btnSynergyOpen = document.getElementById('btn-synergy-open');
+    if (btnSynergyOpen) {
+        btnSynergyOpen.addEventListener('click', () => {
+            renderSynergyDetails();
+            document.getElementById('synergy-modal').style.display = 'flex';
+        });
+    }
+    document.getElementById('btn-synergy-close').addEventListener('click', () => {
+        document.getElementById('synergy-modal').style.display = 'none';
     });
 
     renderDeck();
@@ -560,7 +587,76 @@ function recalculateStats() {
     gameState.energyPerClick = baseClick * achievementMultiplier * globalSynergyMultiplier;
     gameState.energyPerSecond = baseIdle * achievementMultiplier * globalSynergyMultiplier;
 
-    document.getElementById('deck-synergy-info').title = `実績ボーナス: x${achievementMultiplier.toFixed(2)}\nシステムボーナス: x${globalSynergyMultiplier.toFixed(2)}`;
+    // モーダル用に保存
+    lastGlobalSynergyMultiplier = globalSynergyMultiplier;
+    lastIndividualBonus = individualBonus;
+    lastAchievementMultiplier = achievementMultiplier;
+    lastAlphaBonus = 1 + alphaLv * 1.0;
+    
+    lastDeckDetails = cards.filter(c => c.count > 0).map(card => {
+        let levelMult = 1;
+        [10, 25, 50, 100, 250, 500, 1000].forEach(m => {
+            if (card.count >= m) levelMult *= 2;
+        });
+        const isAwakened = gameState.unlockedFeatures.awakening && gameState.awakenedCards.includes(card.id);
+        if (isAwakened) levelMult *= 100;
+        
+        return {
+            id: card.id,
+            name: card.name,
+            levelMult: levelMult,
+            synergyMult: individualBonus[card.id] || 1.0
+        };
+    });
+
+    const synergyBtn = document.getElementById('btn-synergy-open');
+    if (synergyBtn) {
+        synergyBtn.title = `実績ボーナス: x${achievementMultiplier.toFixed(2)}\nシステムボーナス: x${globalSynergyMultiplier.toFixed(2)}`;
+    }
+}
+
+function renderSynergyDetails() {
+    const container = document.getElementById('synergy-details-content');
+    if (!container) return;
+
+    let html = `<div style="margin-bottom: 20px;">
+        <h4 style="margin: 0 0 5px 0; color: #333;">🌍 全体ボーナス (乗算)</h4>
+        <ul style="margin: 0; padding-left: 20px; color: #555;">
+            <li>🏆 <strong>実績ボーナス:</strong> x${lastAchievementMultiplier.toFixed(2)}</li>
+            <li>⚙️ <strong>システムノード(Alpha):</strong> x${lastAlphaBonus.toFixed(2)}</li>
+            <li>🃏 <strong>デッキ全体シナジー:</strong> x${(lastGlobalSynergyMultiplier / lastAlphaBonus).toFixed(2)}</li>
+            <li style="list-style: none; margin-top: 5px; font-weight: bold; color: #d32f2f;">🔥 最終全体倍率: x${(lastAchievementMultiplier * lastGlobalSynergyMultiplier).toFixed(2)}</li>
+        </ul>
+    </div>`;
+
+    html += `<div>
+        <h4 style="margin: 0 0 5px 0; color: #333;">🃏 個別カードボーナス</h4>
+        <table style="width: 100%; border-collapse: collapse; font-size: 12px; color: #555;">
+            <tr style="background: #eee;">
+                <th style="padding: 5px; border: 1px solid #ccc; text-align: left;">カード名</th>
+                <th style="padding: 5px; border: 1px solid #ccc; text-align: right;">価格/レベル効果</th>
+                <th style="padding: 5px; border: 1px solid #ccc; text-align: right;">デッキ効果</th>
+            </tr>`;
+
+    let deckCardsFound = false;
+    lastDeckDetails.forEach(d => {
+        if (gameState.deck.includes(d.id)) {
+            deckCardsFound = true;
+            html += `<tr>
+                <td style="padding: 5px; border: 1px solid #ccc;">${d.name}</td>
+                <td style="padding: 5px; border: 1px solid #ccc; text-align: right;">x${d.levelMult.toFixed(0)}</td>
+                <td style="padding: 5px; border: 1px solid #ccc; text-align: right; color: #ff9800; font-weight: bold;">x${d.synergyMult.toFixed(2)}</td>
+            </tr>`;
+        }
+    });
+
+    if (!deckCardsFound) {
+        html += `<tr><td colspan="3" style="padding: 10px; text-align: center; border: 1px solid #ccc;">デッキにカードが装備されていません</td></tr>`;
+    }
+
+    html += `</table></div>`;
+    
+    container.innerHTML = html;
 }
 
 function getAwakenCost(card) {
