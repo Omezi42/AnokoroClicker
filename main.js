@@ -434,7 +434,11 @@ function renderDeck() {
         if (cardId) {
             const card = cards.find(c => c.id === cardId);
             if (card) {
-                slot.innerHTML = `<img src="${card.image}" title="${card.name}\n${card.skill.name}: ${card.skill.desc}">`;
+                slot.style.position = 'relative';
+                slot.innerHTML = `
+                    <img src="${card.image}" title="${card.name}\n${card.skill.name}: ${card.skill.desc}" style="width:100%; height:100%; object-fit:cover; border-radius:5px;">
+                    <div style="position: absolute; bottom: -5px; right: -5px; background: rgba(0,0,0,0.8); color: white; font-size: 10px; padding: 2px 5px; border-radius: 10px; font-weight: bold; pointer-events: none; border: 1px solid #444;">Lv.${card.count}</div>
+                `;
             }
         } else {
             slot.innerHTML = `<span style="color:#aaa;">空き</span>`;
@@ -717,6 +721,7 @@ function buyCard(cardId) {
         card.count += buyAmount;
         recalculateStats();
         renderCards();
+        renderDeck();
         updateUI();
     }
 }
@@ -833,6 +838,13 @@ function updateUI() {
             }
         }
     });
+
+    const btnPrestige = document.getElementById('btn-prestige-open');
+    if (btnPrestige && gameState.unlockedFeatures.prestige) {
+        const newMemories = Math.floor(Math.cbrt(gameState.allTimeEnergy / 1e21));
+        const gained = Math.max(0, newMemories - gameState.memoryPoints);
+        btnPrestige.innerHTML = `🔄 転生する <span style="font-size:10px; opacity:0.8;">(予定: +${gained})</span>`;
+    }
     
     const unlockedCount = cardEls.length;
     if (unlockedCount < cards.length) {
