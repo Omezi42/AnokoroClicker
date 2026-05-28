@@ -38,6 +38,7 @@
             <div class="tab-nav">
                 <button class="tab-btn active" data-target="tab-shop">🛒 ショップ</button>
                 <button class="tab-btn" id="tab-btn-deck" data-target="tab-deck" style="display: none;">🃏 デッキ</button>
+                <button class="tab-btn" id="tab-btn-resonance" data-target="tab-resonance" style="display: none; background: #ff5722; color: #fff;">🔥 共鳴陣</button>
                 <button class="tab-btn" data-target="tab-system">⚙️ システム</button>
             </div>
 
@@ -85,6 +86,62 @@
                     <p>※装備を外すには、スロットをクリックして外すボタンを押してください。</p>
                 </div>
             </div>
+            <!-- RESONANCE TAB -->
+            <div id="tab-resonance" class="tab-pane" style="padding: 10px;">
+                <h3 style="color: #ff5722; border-bottom: 2px solid #ff5722; padding-bottom: 10px; margin-top: 0;">🔥 共鳴の樹</h3>
+                <div style="background: rgba(255, 87, 34, 0.1); padding: 10px; border-radius: 5px; margin-bottom: 15px; font-size: 13px;">
+                    <p style="margin: 0;">現在の共鳴トークン: <strong id="resonance-token-count" style="color:#ff5722; font-size: 16px;">0</strong></p>
+                    <p style="margin: 5px 0 0 0; color: #aaa;">共鳴トークンを消費して天使または炎のルートを進めます。同時に進められるルートは1つだけです。</p>
+                </div>
+
+                <div class="resonance-tree" style="display: flex; gap: 15px;">
+                    <!-- 天使ルート -->
+                    <div class="resonance-path" style="flex: 1; border: 1px solid #00bcd4; border-radius: 8px; padding: 10px; background: rgba(0,188,212,0.05);">
+                        <h4 style="color: #00bcd4; margin-top: 0; text-align: center;">👼 天使ルート</h4>
+                        <div style="font-size: 11px; color: #aaa; margin-bottom: 15px; text-align: center;">放置力・シナジー特化</div>
+                        
+                        <div class="resonance-node" style="margin-bottom: 15px; border: 1px solid #444; padding: 10px; background: #222; border-radius: 4px;">
+                            <div style="color: #fff; font-size: 12px; font-weight: bold;">ANGEL.AWAKENING</div>
+                            <div style="color: #00bcd4; font-size: 10px; margin: 5px 0;">全放置火力が共鳴トークン数に応じて乗算される<br>(現在の倍率: <span id="resonance-angel-mult">1</span>x)</div>
+                            <button id="btn-buy-angel-1" class="btn" style="width: 100%; font-size: 10px; padding: 5px;">解放 (コスト: 1)</button>
+                        </div>
+
+                        <div class="resonance-node" style="margin-bottom: 15px; border: 1px solid #444; padding: 10px; background: #222; border-radius: 4px;">
+                            <div style="color: #fff; font-size: 12px; font-weight: bold;">ANGEL.SYNERGY</div>
+                            <div style="color: #00bcd4; font-size: 10px; margin: 5px 0;">デッキシナジー倍率がべき乗(^1.05)で計算される</div>
+                            <button id="btn-buy-angel-2" class="btn" style="width: 100%; font-size: 10px; padding: 5px;">解放 (コスト: 10)</button>
+                        </div>
+                    </div>
+
+                    <!-- 炎ルート -->
+                    <div class="resonance-path" style="flex: 1; border: 1px solid #ff5722; border-radius: 8px; padding: 10px; background: rgba(255,87,34,0.05);">
+                        <h4 style="color: #ff5722; margin-top: 0; text-align: center;">🔥 炎ルート</h4>
+                        <div style="font-size: 11px; color: #aaa; margin-bottom: 15px; text-align: center;">クリック・手動特化</div>
+                        
+                        <div class="resonance-node" style="margin-bottom: 15px; border: 1px solid #444; padding: 10px; background: #222; border-radius: 4px;">
+                            <div style="color: #fff; font-size: 12px; font-weight: bold;">FIRE.IGNITION</div>
+                            <div style="color: #ff5722; font-size: 10px; margin: 5px 0;">全クリック火力が共鳴トークン数に応じて乗算される<br>(現在の倍率: <span id="resonance-fire-mult">1</span>x)</div>
+                            <button id="btn-buy-fire-1" class="btn" style="width: 100%; font-size: 10px; padding: 5px;">解放 (コスト: 1)</button>
+                        </div>
+
+                        <div class="resonance-node" style="margin-bottom: 15px; border: 1px solid #444; padding: 10px; background: #222; border-radius: 4px;">
+                            <div style="color: #fff; font-size: 12px; font-weight: bold;">FIRE.OVERLOAD</div>
+                            <div style="color: #ff5722; font-size: 10px; margin: 5px 0;">クリックのたびに一時的に生産力が+1% (最大+1000%)</div>
+                            <button id="btn-buy-fire-2" class="btn" style="width: 100%; font-size: 10px; padding: 5px;">解放 (コスト: 10)</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div style="margin-top: 20px; border-top: 1px solid #444; padding-top: 15px;">
+                    <h4 style="color: #fff; margin-top: 0;">⚔️ 共鳴の試練</h4>
+                    <p style="font-size: 11px; color: #aaa; margin-bottom: 10px;">試練を開始すると一時的にルールが変更され、エネルギーがリセットされます。目標（1e50）に到達すればクリアとなります。</p>
+                    <div style="display: flex; gap: 10px;">
+                        <button id="btn-trial-angel" class="btn" style="flex: 1; background: #111; border: 1px solid #00bcd4; color: #00bcd4;">👼 天使の試練<br><span style="font-size: 9px; color:#aaa;">クリック封印</span></button>
+                        <button id="btn-trial-fire" class="btn" style="flex: 1; background: #111; border: 1px solid #ff5722; color: #ff5722;">🔥 炎の試練<br><span style="font-size: 9px; color:#aaa;">デッキ無効</span></button>
+                        <button id="btn-trial-cancel" class="btn btn-danger" style="display:none; flex: 1;">❌ 試練を中止</button>
+                    </div>
+                </div>
+            </div>
 
             <!-- SYSTEM TAB -->
             <div id="tab-system" class="tab-pane" style="padding: 20px;">
@@ -93,11 +150,13 @@
                 <div style="display: flex; flex-direction: column; gap: 15px; margin-top: 20px;">
                     <button id="btn-help-open" class="btn" style="background: #4caf50;">📖 遊び方・ヘルプ</button>
                     <button id="btn-achievements" class="btn btn-info">🏆 実績一覧</button>
+                    <button id="btn-stats-open" class="btn" style="background: #9c27b0; color: #fff;">📊 統計情報</button>
                     <button id="btn-save" class="btn">💾 手動セーブ</button>
                     
                     <div style="margin-top: 20px; border-top: 1px dashed #ccc; padding-top: 20px; display: flex; flex-direction: column; gap: 15px;">
                         <button id="btn-skilltree-open" class="btn" style="display: none; background: #1a1a1a; color: #00ffcc; border: 1px solid #00ffcc; font-family: monospace;">[ACCESS_SYSTEM_NODES]</button>
                         <button id="btn-prestige-open" class="btn" style="display: none; background: #ff9800;">🔄 転生する</button>
+                        <button id="btn-resonance-open" class="btn" style="display: none; background: linear-gradient(135deg, #ff5722 0%, #2196f3 100%); color: white; border: none; font-weight: bold; text-shadow: 1px 1px 2px rgba(0,0,0,0.5);">✨ 共鳴地に移行（共鳴召喚）</button>
                     </div>
 
                     <div style="margin-top: 40px; text-align: center;">
@@ -174,6 +233,9 @@
 
                     <h4 style="margin-bottom: 5px; color: var(--primary-color);">🔹 転生とは？</h4>
                     <p style="margin-top: 0; color: #555;">ゲーム進行が詰まってきたら「システム」タブから「転生」を行うことができます。<br>全てをリセットする代わりに、これまでの累計獲得エネルギーに応じた強力な永続ボーナス（メモリーポイント）を得て、最初から超高速で進めるようになります。<br>※「実績」の進行度と「メモリーポイント」は転生しても引き継がれます。</p>
+                    
+                    <h4 style="margin-bottom: 5px; color: #ff5722;">🔥 共鳴地とは？</h4>
+                    <p style="margin-top: 0; color: #555;">未開地の到達点（エネルギー 1e100）を超えると解放される新天地です。<br>未開地でのすべての進捗（メモリーやシステムノード含む）をリセットして**「共鳴召喚」**を行うことで「共鳴トークン」を獲得します。<br>天使ルート（放置力・シナジー特化）か炎ルート（クリック・アクティブ特化）を選んで強化し、さらに過酷な「試練」をクリアすることで強大な力を得ます。</p>
                 </div>
             </div>
         </div>
@@ -275,6 +337,37 @@
             <p style="font-size: 14px; margin-bottom: 15px;">所持している「エネルギー」系カードの中から、好きな見た目をクリッカー対象として設定できます。</p>
             <div id="skin-list" class="skin-list">
                 <!-- スキン一覧がJavaScriptによって生成されます -->
+            </div>
+        </div>
+    </div>
+
+    <!-- 統計情報モーダル -->
+    <div id="stats-modal" class="modal-overlay" style="display: none;">
+        <div class="modal-content" style="max-width: 400px; text-align: left;">
+            <h2 style="color: #9c27b0; text-align: center; border-bottom: 2px solid #eee; padding-bottom: 10px;">📊 統計情報</h2>
+            <div id="stats-details-content" style="margin-top: 15px;">
+                <!-- 統計情報がJavaScriptによって生成されます -->
+            </div>
+            <div style="text-align: center; margin-top: 20px;">
+                <button id="btn-stats-close" class="btn">閉じる</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 共鳴召喚モーダル -->
+    <div id="resonance-modal" class="modal-overlay" style="display: none;">
+        <div class="modal-content" style="max-width: 600px; text-align: center; border: 2px solid #ff5722; background: #1a1a2e; color: #fff;">
+            <h2 style="color: #ff5722; text-shadow: 0 0 10px #ff5722;">🔥 ［共鳴召喚］ 🔥</h2>
+            <p style="margin-bottom: 20px;">未開地での進捗（全カード、デッキ、未開地のメモリー・システムノード全て）をリソースに変換し、新たなる高み「共鳴地」へ移行します。<br><span style="color:#ff5722; font-weight:bold;">※この操作は取り消せません。</span></p>
+            
+            <div style="margin: 20px 0; padding: 20px; background: rgba(0,0,0,0.5); border-radius: 8px;">
+                <h3>獲得予定の共鳴トークン</h3>
+                <div id="pending-resonance-tokens" style="font-size: 32px; font-weight: bold; color: #2196f3; text-shadow: 0 0 10px #2196f3;">+0</div>
+            </div>
+
+            <div style="display: flex; gap: 10px; justify-content: center; margin-top: 30px;">
+                <button id="btn-do-resonance" class="btn" style="background: #ff5722; color: #fff;">召喚を実行する</button>
+                <button id="btn-cancel-resonance" class="btn" style="background: #555; color: #fff;">キャンセル</button>
             </div>
         </div>
     </div>

@@ -20,7 +20,20 @@ let gameState = {
         awakening: false,
         prestige: false,
         artifact: false,
-        advancedTree: false
+        advancedTree: false,
+        resonance: false
+    },
+    resonanceTokens: 0,
+    activeTrial: null,
+    completedTrials: {
+        angel: false,
+        fire: false
+    },
+    resonanceTree: {
+        angel_path_1: false,
+        angel_path_2: false,
+        fire_path_1: false,
+        fire_path_2: false
     },
     awakenedCards: [],
     awakenedCardTypes: {}, // cardId: 'click' or 'idle' (flipped type)
@@ -46,9 +59,9 @@ const systemNodes = {
     node_gamma: { id: 'node_gamma', name: 'SYS.PROBABILITY_OVERRIDE', desc: 'Rare Anomaly Spawn Rate +5%', maxLevel: 5, cost: (lv) => 5 + lv * 5 },
     node_delta: { id: 'node_delta', name: 'SYS.REWARD_AMPLIFIER', desc: 'Rare Anomaly Yield +50%', maxLevel: 10, cost: (lv) => 2 + lv * 3 },
     node_epsilon: { id: 'node_epsilon', name: 'SYS.AWAKEN_OPTIMIZATION', desc: 'Awakening Energy Requirement / 10', maxLevel: 5, cost: (lv) => 10 + lv * 10 },
-    // 無限アップグレードノード (1e45以降)
-    node_inf_click: { id: 'node_inf_click', name: 'SYS.INFINITY_CLICK', desc: 'Click Base Production +5% (Infinite)', maxLevel: Infinity, cost: (lv) => Math.floor(1e5 * Math.pow(1.5, lv)) },
-    node_inf_idle: { id: 'node_inf_idle', name: 'SYS.INFINITY_IDLE', desc: 'Idle Base Production +5% (Infinite)', maxLevel: Infinity, cost: (lv) => Math.floor(1e5 * Math.pow(1.5, lv)) },
+    // 無限アップグレードノード
+    node_inf_click: { id: 'node_inf_click', name: 'SYS.INFINITY_CLICK', desc: 'Click Base Production +5% (Infinite)', maxLevel: Infinity, cost: (lv) => Math.floor(1000 * Math.pow(1.5, lv)) },
+    node_inf_idle: { id: 'node_inf_idle', name: 'SYS.INFINITY_IDLE', desc: 'Idle Base Production +5% (Infinite)', maxLevel: Infinity, cost: (lv) => Math.floor(1000 * Math.pow(1.5, lv)) },
     // 上位ルートノード
     node_artifact_forge: { id: 'node_artifact_forge', name: 'SYS.ARTIFACT_FORGE', desc: 'Unlock 6th Artifact slot (AF)', maxLevel: 1, cost: (lv) => 1e6 },
     node_synergy_overdrive: { id: 'node_synergy_overdrive', name: 'SYS.SYNERGY_OVERDRIVE', desc: 'Deck Synergy limit +50%', maxLevel: 5, cost: (lv) => 1e8 * Math.pow(10, lv) },
@@ -69,6 +82,7 @@ let lastDeckDetails = [];
 let cards = window.generatedCards || [];
 
 const achievementsList = [
+    // === 新天地 (e0〜e21) ===
     { id: 'a1', title: 'はじまりの一歩', desc: '初めてカードを購入する', condition: () => cards.some(c => c.count > 0) },
     { id: 'a5', title: 'カードコレクター', desc: 'カードを累計100枚購入する', condition: () => cards.reduce((a, b) => a + b.count, 0) >= 100 },
     { id: 'a5_2', title: 'カードマニア', desc: 'カードを累計500枚購入する', condition: () => cards.reduce((a, b) => a + b.count, 0) >= 500 },
@@ -86,10 +100,33 @@ const achievementsList = [
     { id: 'e_1qa', title: 'クアッドリリオネア', desc: 'エネルギーが 1Qa を超える', condition: () => gameState.allTimeEnergy >= 1e15 },
     { id: 'e_1qi', title: 'クインティリオン', desc: 'エネルギーが 1Qi を超える', condition: () => gameState.allTimeEnergy >= 1e18 },
     { id: 'e_1sx', title: 'セクスティリオン', desc: 'エネルギーが 1Sx を超える', condition: () => gameState.allTimeEnergy >= 1e21 },
+    
+    // === 未開地 (e21〜e100) ===
     { id: 'e_1sp', title: 'セプティリオン', desc: 'エネルギーが 1Sp を超える', condition: () => gameState.allTimeEnergy >= 1e24 },
     { id: 'e_1oc', title: 'オクティリオン', desc: 'エネルギーが 1Oc を超える', condition: () => gameState.allTimeEnergy >= 1e27 },
     { id: 'e_1no', title: 'ノニリオン', desc: 'エネルギーが 1No を超える', condition: () => gameState.allTimeEnergy >= 1e30 },
     { id: 'e_1dc', title: 'デシリオン', desc: 'エネルギーが 1Dc を超える', condition: () => gameState.allTimeEnergy >= 1e33 },
+    { id: 'e_36', title: 'ウンデシリオン', desc: 'エネルギーが e36 を超える', condition: () => gameState.allTimeEnergy >= 1e36 },
+    { id: 'e_42', title: 'トレデシリオン', desc: 'エネルギーが e42 を超える', condition: () => gameState.allTimeEnergy >= 1e42 },
+    { id: 'e_50', title: '半世紀の力', desc: 'エネルギーが e50 を超える', condition: () => gameState.allTimeEnergy >= 1e50 },
+    { id: 'e_60', title: '次元の門', desc: 'エネルギーが e60 を超える', condition: () => gameState.allTimeEnergy >= 1e60 },
+    { id: 'e_75', title: 'インフィニティの予感', desc: 'エネルギーが e75 を超える', condition: () => gameState.allTimeEnergy >= 1e75 },
+    { id: 'e_100', title: '共鳴の目覚め', desc: 'エネルギーが e100 を超える！共鳴地が解放された', condition: () => gameState.allTimeEnergy >= 1e100 },
+    
+    // === 共鳴地 (e100〜e200) ===
+    { id: 'e_120', title: '共鳴者', desc: 'エネルギーが e120 を超える', condition: () => gameState.allTimeEnergy >= 1e120 },
+    { id: 'e_150', title: '次元の支配者', desc: 'エネルギーが e150 を超える', condition: () => gameState.allTimeEnergy >= 1e150 },
+    { id: 'e_175', title: '因果の超越', desc: 'エネルギーが e175 を超える', condition: () => gameState.allTimeEnergy >= 1e175 },
+    { id: 'e_200', title: '覚醒の兆し', desc: 'エネルギーが e200 を超える！覚醒地が開かれた', condition: () => gameState.allTimeEnergy >= 1e200 },
+    
+    // === 覚醒地 (e200〜e308) ===
+    { id: 'e_225', title: '終焉の始まり', desc: 'エネルギーが e225 を超える', condition: () => gameState.allTimeEnergy >= 1e225 },
+    { id: 'e_250', title: '宇宙の果て', desc: 'エネルギーが e250 を超える', condition: () => gameState.allTimeEnergy >= 1e250 },
+    { id: 'e_275', title: '観測不能領域', desc: 'エネルギーが e275 を超える', condition: () => gameState.allTimeEnergy >= 1e275 },
+    { id: 'e_300', title: '無限の一歩手前', desc: 'エネルギーが e300 を超える', condition: () => gameState.allTimeEnergy >= 1e300 },
+    { id: 'e_308', title: 'あの頃の記憶', desc: 'エネルギーが e308 に到達。全てを思い出した...', condition: () => gameState.allTimeEnergy >= 1e308 },
+    
+    // === 放置系 ===
     { id: 'c_1', title: '放置の目覚め', desc: '毎秒獲得量が 100 を超える', condition: () => gameState.energyPerSecond >= 100 },
     { id: 'a6', title: 'プロの放置民', desc: '毎秒獲得量が 10K を超える', condition: () => gameState.energyPerSecond >= 10000 },
     { id: 'c_3', title: '不労所得', desc: '毎秒獲得量が 1M を超える', condition: () => gameState.energyPerSecond >= 1e6 },
@@ -97,7 +134,27 @@ const achievementsList = [
     { id: 'c_5', title: '無限の泉', desc: '毎秒獲得量が 1T を超える', condition: () => gameState.energyPerSecond >= 1e12 },
     { id: 'c_6', title: '星の創造者', desc: '毎秒獲得量が 1Qa を超える', condition: () => gameState.energyPerSecond >= 1e15 },
     { id: 'c_7', title: '銀河の支配者', desc: '毎秒獲得量が 1Qi を超える', condition: () => gameState.energyPerSecond >= 1e18 },
-    { id: 'c_8', title: '神の領域', desc: '毎秒獲得量が 1Sx を超える', condition: () => gameState.energyPerSecond >= 1e21 }
+    { id: 'c_8', title: '神の領域', desc: '毎秒獲得量が 1Sx を超える', condition: () => gameState.energyPerSecond >= 1e21 },
+    
+    // === 転生・プレステージ系 ===
+    { id: 'p_1', title: '初めての転生', desc: '転生を1回行う', condition: () => gameState.memoryPoints > 0 || gameState.resonanceTokens > 0 },
+    { id: 'p_2', title: 'メモリー蓄積', desc: 'メモリーポイントを100以上蓄積する', condition: () => gameState.memoryPoints >= 100 },
+    { id: 'p_3', title: 'メモリー富豪', desc: 'メモリーポイントを10000以上蓄積する', condition: () => gameState.memoryPoints >= 10000 },
+    
+    // === 共鳴システム系 ===
+    { id: 'r_1', title: '初の共鳴召喚', desc: '共鳴召喚を初めて行う', condition: () => gameState.resonanceTokens > 0 },
+    { id: 'r_2', title: '共鳴の力', desc: '共鳴トークンを10以上蓄積する', condition: () => gameState.resonanceTokens >= 10 },
+    { id: 'r_3', title: '天使の導き', desc: '天使ルートを1段階解放する', condition: () => gameState.resonanceTree.angel_path_1 === true },
+    { id: 'r_4', title: '炎の洗礼', desc: '炎ルートを1段階解放する', condition: () => gameState.resonanceTree.fire_path_1 === true },
+    { id: 'r_5', title: '天使の試練・克服', desc: '天使の試練をクリアする', condition: () => gameState.completedTrials.angel === true },
+    { id: 'r_6', title: '炎の試練・克服', desc: '炎の試練をクリアする', condition: () => gameState.completedTrials.fire === true },
+    { id: 'r_7', title: '二つの道', desc: '両方の試練をクリアする', condition: () => gameState.completedTrials.angel === true && gameState.completedTrials.fire === true },
+    
+    // === クリック系 ===
+    { id: 'cl_1', title: 'クリック入門', desc: '累計100回クリックする', condition: () => gameState.totalClicks >= 100 },
+    { id: 'cl_2', title: 'クリッカー', desc: '累計1000回クリックする', condition: () => gameState.totalClicks >= 1000 },
+    { id: 'cl_3', title: '指の達人', desc: '累計10000回クリックする', condition: () => gameState.totalClicks >= 10000 },
+    { id: 'cl_4', title: '無限の指', desc: '累計100000回クリックする', condition: () => gameState.totalClicks >= 100000 }
 ];
 
 const FORMAT_SUFFIXES = ['', 'K', 'M', 'B', 'T', 'Qa', 'Qi', 'Sx', 'Sp', 'Oc', 'No', 'Dc', 'Ud', 'Dd', 'Td', 'Qad', 'Qid', 'Sxd', 'Spd', 'Ocd', 'Nod', 'Vg', 'Uvg', 'Dvg', 'Tvg', 'Qavg', 'Qivg', 'Sxvg', 'Spvg', 'Ocvg', 'Novg', 'Tg', 'Utg', 'Dtg', 'Ttg', 'Qatg', 'Qitg', 'Sxtg', 'Sptg', 'Octg', 'Notg', 'Qag'];
@@ -153,7 +210,7 @@ function init() {
     // 転生関連ボタン
     document.getElementById('btn-prestige-open').addEventListener('click', () => {
         document.getElementById('current-memories').textContent = gameState.memoryPoints;
-        let newMemories = Math.floor(Math.pow(Math.max(0, Math.log10(gameState.allTimeEnergy / 1e21)), 2));
+        let newMemories = Math.floor(Math.pow(Math.max(0, Math.log10(gameState.allTimeEnergy / 1e20)), 4));
         let gained = newMemories - gameState.memoryPoints;
         if (gained < 0) gained = 0;
         document.getElementById('pending-memories').textContent = `+${gained}`;
@@ -162,6 +219,30 @@ function init() {
     document.getElementById('btn-cancel-prestige').addEventListener('click', () => {
         document.getElementById('prestige-modal').style.display = 'none';
     });
+
+    const btnResonanceOpen = document.getElementById('btn-resonance-open');
+    if (btnResonanceOpen) {
+        btnResonanceOpen.addEventListener('click', () => {
+            let pendingTokens = Math.floor(Math.pow(1.5, Math.max(0, Math.log10(gameState.allTimeEnergy / 1e100))));
+            if (pendingTokens < 0) pendingTokens = 0;
+            document.getElementById('pending-resonance-tokens').textContent = `+${pendingTokens}`;
+            document.getElementById('resonance-modal').style.display = 'flex';
+        });
+    }
+
+    const btnCancelResonance = document.getElementById('btn-cancel-resonance');
+    if (btnCancelResonance) {
+        btnCancelResonance.addEventListener('click', () => {
+            document.getElementById('resonance-modal').style.display = 'none';
+        });
+    }
+
+    const btnDoResonance = document.getElementById('btn-do-resonance');
+    if (btnDoResonance) {
+        btnDoResonance.addEventListener('click', () => {
+            doResonance();
+        });
+    }
     document.getElementById('btn-do-prestige').addEventListener('click', doPrestige);
 
     // スキルツリー関連
@@ -186,6 +267,69 @@ function init() {
         btnStatsClose.addEventListener('click', () => {
             document.getElementById('stats-modal').style.display = 'none';
         });
+    }
+
+    // 共鳴ツリーイベント
+    const btnAngel1 = document.getElementById('btn-buy-angel-1');
+    if (btnAngel1) {
+        btnAngel1.addEventListener('click', () => {
+            if (gameState.resonanceTokens >= 1 && !gameState.resonanceTree.angel_path_1) {
+                gameState.resonanceTokens -= 1;
+                gameState.resonanceTree.angel_path_1 = true;
+                updateResonanceUI();
+                recalculateStats();
+                updateUI();
+            }
+        });
+    }
+    const btnAngel2 = document.getElementById('btn-buy-angel-2');
+    if (btnAngel2) {
+        btnAngel2.addEventListener('click', () => {
+            if (gameState.resonanceTokens >= 10 && gameState.resonanceTree.angel_path_1 && !gameState.resonanceTree.angel_path_2) {
+                gameState.resonanceTokens -= 10;
+                gameState.resonanceTree.angel_path_2 = true;
+                updateResonanceUI();
+                recalculateStats();
+                updateUI();
+            }
+        });
+    }
+    const btnFire1 = document.getElementById('btn-buy-fire-1');
+    if (btnFire1) {
+        btnFire1.addEventListener('click', () => {
+            if (gameState.resonanceTokens >= 1 && !gameState.resonanceTree.fire_path_1) {
+                gameState.resonanceTokens -= 1;
+                gameState.resonanceTree.fire_path_1 = true;
+                updateResonanceUI();
+                recalculateStats();
+                updateUI();
+            }
+        });
+    }
+    const btnFire2 = document.getElementById('btn-buy-fire-2');
+    if (btnFire2) {
+        btnFire2.addEventListener('click', () => {
+            if (gameState.resonanceTokens >= 10 && gameState.resonanceTree.fire_path_1 && !gameState.resonanceTree.fire_path_2) {
+                gameState.resonanceTokens -= 10;
+                gameState.resonanceTree.fire_path_2 = true;
+                updateResonanceUI();
+                recalculateStats();
+                updateUI();
+            }
+        });
+    }
+
+    const btnTrialAngel = document.getElementById('btn-trial-angel');
+    if (btnTrialAngel) {
+        btnTrialAngel.addEventListener('click', () => startTrial('angel'));
+    }
+    const btnTrialFire = document.getElementById('btn-trial-fire');
+    if (btnTrialFire) {
+        btnTrialFire.addEventListener('click', () => startTrial('fire'));
+    }
+    const btnTrialCancel = document.getElementById('btn-trial-cancel');
+    if (btnTrialCancel) {
+        btnTrialCancel.addEventListener('click', cancelTrial);
     }
 
     document.querySelectorAll('.buy-toggle').forEach(btn => {
@@ -337,15 +481,20 @@ function loadGame() {
             if (gameState.totalClicks === undefined) gameState.totalClicks = 0;
             if (gameState.playTimeSeconds === undefined) gameState.playTimeSeconds = 0;
             if (!gameState.unlockedFeatures) {
-                gameState.unlockedFeatures = { deck: false, awakening: false, prestige: false, artifact: false, advancedTree: false };
+                gameState.unlockedFeatures = { deck: false, awakening: false, prestige: false, artifact: false, advancedTree: false, resonance: false };
             } else {
                 if (gameState.unlockedFeatures.artifact === undefined) gameState.unlockedFeatures.artifact = false;
                 if (gameState.unlockedFeatures.advancedTree === undefined) gameState.unlockedFeatures.advancedTree = false;
+                if (gameState.unlockedFeatures.resonance === undefined) gameState.unlockedFeatures.resonance = false;
             }
+            if (gameState.resonanceTokens === undefined) gameState.resonanceTokens = 0;
+            if (gameState.activeTrial === undefined) gameState.activeTrial = null;
+            if (!gameState.completedTrials) gameState.completedTrials = { angel: false, fire: false };
+            if (!gameState.resonanceTree) gameState.resonanceTree = { angel_path_1: false, angel_path_2: false, fire_path_1: false, fire_path_2: false };
             if (!gameState.awakenedCards) gameState.awakenedCards = [];
             if (!gameState.awakenedCardTypes) gameState.awakenedCardTypes = {};
             if (gameState.memoryPoints === undefined) gameState.memoryPoints = 0;
-            const correctMaxMemories = Math.floor(Math.pow(Math.max(0, Math.log10(gameState.allTimeEnergy / 1e21)), 2));
+            const correctMaxMemories = Math.floor(Math.pow(Math.max(0, Math.log10(gameState.allTimeEnergy / 1e20)), 4));
             if (gameState.memoryPoints > correctMaxMemories) {
                 gameState.memoryPoints = correctMaxMemories;
             }
@@ -430,7 +579,7 @@ function updateUnlockUI() {
 
 // 転生処理
 function doPrestige() {
-    let newMemories = Math.floor(Math.pow(Math.max(0, Math.log10(gameState.allTimeEnergy / 1e21)), 2));
+    let newMemories = Math.floor(Math.pow(Math.max(0, Math.log10(gameState.allTimeEnergy / 1e20)), 4));
     let gained = newMemories - gameState.memoryPoints;
     if (gained < 0) gained = 0;
     
@@ -452,6 +601,74 @@ function doPrestige() {
     updateUnlockUI();
     saveGame();
     showToast('REBIRTH SUCCESS', 'System parameters reset. Memories retained.', '✨');
+}
+
+// 共鳴召喚処理（Tier 2 Prestige）
+function doResonance() {
+    let gained = Math.floor(Math.pow(1.5, Math.max(0, Math.log10(gameState.allTimeEnergy / 1e100))));
+    if (gained < 0) gained = 0;
+    
+    // 完全リセット（共鳴関連以外）
+    gameState.energy = 0;
+    gameState.energyPerClick = 1;
+    gameState.energyPerSecond = 0;
+    gameState.goldenClicks = 0;
+    gameState.allTimeEnergy = 0;
+    gameState.deck = [null, null, null, null, null];
+    gameState.awakenedCards = [];
+    gameState.awakenedCardTypes = {};
+    
+    // システムノードのリセット
+    for (const key in gameState.skillTree) {
+        gameState.skillTree[key].level = 0;
+    }
+    
+    // メモリーのリセット（ただしUI上は保持しない）
+    gameState.memoryPoints = 0;
+    
+    // ロック状態のリセット（共鳴以外）
+    gameState.unlockedFeatures.deck = false;
+    gameState.unlockedFeatures.awakening = false;
+    gameState.unlockedFeatures.prestige = false;
+    gameState.unlockedFeatures.artifact = false;
+    gameState.unlockedFeatures.advancedTree = false;
+    // resonance は保持
+    
+    // 共鳴トークンの付与
+    gameState.resonanceTokens += gained;
+    
+    cards.forEach(c => c.count = 0);
+    
+    document.getElementById('resonance-modal').style.display = 'none';
+    recalculateStats();
+    renderCards();
+    renderDeck();
+    updateUI();
+    updateUnlockUI();
+    saveGame();
+    
+    // 演出
+    const effectEl = document.createElement('div');
+    effectEl.style.position = 'fixed';
+    effectEl.style.top = '0';
+    effectEl.style.left = '0';
+    effectEl.style.width = '100vw';
+    effectEl.style.height = '100vh';
+    effectEl.style.backgroundColor = '#ff5722';
+    effectEl.style.zIndex = '99999';
+    effectEl.style.opacity = '1';
+    effectEl.style.transition = 'opacity 3s ease';
+    effectEl.style.pointerEvents = 'none';
+    document.body.appendChild(effectEl);
+    
+    setTimeout(() => {
+        effectEl.style.opacity = '0';
+    }, 100);
+    
+    setTimeout(() => {
+        effectEl.remove();
+        showToast('RESONANCE SUMMONING', `すべてが炎に包まれた... 共鳴トークン +${gained}`, '🔥');
+    }, 3100);
 }
 
 function renderSkillTree() {
@@ -809,11 +1026,53 @@ function recalculateStats() {
     baseClick *= (1 + infClickLv * 0.05);
     baseIdle *= (1 + infIdleLv * 0.05);
 
-    const achievementMultiplier = 1 + (gameState.achievements.length * 0.05);
-    const memoryMultiplier = 1 + (gameState.memoryPoints * 0.1);
+    let achievementMultiplier = 1 + (gameState.achievements.length * 0.05);
+    let memoryMultiplier = 1 + (gameState.memoryPoints * 0.1);
+
+    // 共鳴ツリーの適用
+    let angelMult = 1;
+    let fireMult = 1;
+    if (gameState.resonanceTree.angel_path_1) {
+        angelMult = Math.pow(1.25, gameState.resonanceTokens);
+        baseIdle *= angelMult;
+    }
+    if (gameState.resonanceTree.angel_path_2) {
+        globalSynergyMultiplier = Math.pow(globalSynergyMultiplier, 1.05);
+    }
+    if (gameState.resonanceTree.fire_path_1) {
+        fireMult = Math.pow(1.25, gameState.resonanceTokens);
+        baseClick *= fireMult;
+    }
+    if (gameState.resonanceTree.fire_path_2) {
+        // オーバーロードは別途クリック時に加算される multiplier
+        if (gameState.fireOverloadStacks === undefined) gameState.fireOverloadStacks = 0;
+        const overloadMult = 1 + (gameState.fireOverloadStacks * 0.01);
+        baseClick *= overloadMult;
+        baseIdle *= overloadMult;
+    }
+
+    // 試練クリア報酬（永続パッシブ）
+    if (gameState.completedTrials.angel) {
+        baseIdle *= 3; // 天使の試練クリア: 放置生産力 x3
+    }
+    if (gameState.completedTrials.fire) {
+        baseClick *= 3; // 炎の試練クリア: クリック火力 x3
+    }
+
+    // 試練の適用（進行中のみ）
+    if (gameState.activeTrial === 'angel') {
+        baseClick = 0; // クリック封印
+    }
+    if (gameState.activeTrial === 'fire') {
+        globalSynergyMultiplier = 1; // シナジー無効
+    }
 
     gameState.energyPerClick = baseClick * achievementMultiplier * memoryMultiplier * globalSynergyMultiplier;
     gameState.energyPerSecond = baseIdle * achievementMultiplier * memoryMultiplier * globalSynergyMultiplier;
+
+    // UI更新用変数
+    window.lastAngelMult = angelMult;
+    window.lastFireMult = fireMult;
 
     // モーダル用に保存
     lastGlobalSynergyMultiplier = globalSynergyMultiplier;
@@ -1175,10 +1434,15 @@ function checkUnlocks() {
         showToast('System Override', 'ARTIFACT_SLOT_UNLOCKED', '🔮');
         changed = true;
     }
-    if (!gameState.unlockedFeatures.advancedTree && gameState.allTimeEnergy >= 1e45) {
+    if (!gameState.unlockedFeatures.advancedTree && gameState.allTimeEnergy >= 1e30) {
         gameState.unlockedFeatures.advancedTree = true;
-        showToast('System Override', 'ADVANCED_SYSTEM_NODES_UNLOCKED', '⚡');
-        changed = true;
+        showToast('SYSTEM OVERRIDE', 'Advanced Tree Unlocked.', '⚡');
+        updateUnlockUI();
+    }
+    if (!gameState.unlockedFeatures.resonance && gameState.allTimeEnergy >= 1e100) {
+        gameState.unlockedFeatures.resonance = true;
+        showToast('RESONANCE DETECTED', '共鳴地へのゲートが開きました。', '🔥');
+        updateUnlockUI();
     }
     if (changed) {
         updateUnlockUI();
@@ -1191,6 +1455,8 @@ function updateUnlockUI() {
     document.getElementById('tab-btn-deck').style.display = gameState.unlockedFeatures.deck ? 'block' : 'none';
     document.getElementById('btn-prestige-open').style.display = gameState.unlockedFeatures.prestige ? 'block' : 'none';
     document.getElementById('btn-skilltree-open').style.display = gameState.unlockedFeatures.prestige ? 'block' : 'none';
+    document.getElementById('btn-resonance-open').style.display = gameState.unlockedFeatures.resonance ? 'block' : 'none';
+    document.getElementById('tab-btn-resonance').style.display = gameState.unlockedFeatures.resonance ? 'block' : 'none';
     
     // スキルツリーの「ACCESS_SYSTEM_NODES」ボタンのテキストを進行度に応じてサイバーに変更
     const treeBtn = document.getElementById('btn-skilltree-open');
@@ -1228,6 +1494,19 @@ function renderStats() {
     
     if (gameState.unlockedFeatures.prestige) {
         html += `<li><strong>現在のメモリーポイント:</strong> <span style="color:#ff9800">${gameState.memoryPoints.toLocaleString()}</span></li>`;
+    }
+    
+    if (gameState.unlockedFeatures.resonance) {
+        html += `<li><strong>共鳴トークン:</strong> <span style="color:#ff5722">${formatNumber(gameState.resonanceTokens)}</span></li>`;
+        const activePath = gameState.resonanceTree.angel_path_1 ? '👼 天使ルート' : (gameState.resonanceTree.fire_path_1 ? '🔥 炎ルート' : '未選択');
+        html += `<li><strong>選択ルート:</strong> ${activePath}</li>`;
+        const trialStatus = [];
+        if (gameState.completedTrials.angel) trialStatus.push('天使✅');
+        if (gameState.completedTrials.fire) trialStatus.push('炎✅');
+        html += `<li><strong>試練クリア:</strong> ${trialStatus.length > 0 ? trialStatus.join(' / ') : 'なし'}</li>`;
+        if (gameState.activeTrial) {
+            html += `<li><strong style="color:red;">⚠ 試練進行中:</strong> ${gameState.activeTrial === 'angel' ? '天使の試練' : '炎の試練'}</li>`;
+        }
     }
     
     html += `</ul>`;
@@ -1269,10 +1548,17 @@ function updateUI() {
 
     const btnPrestige = document.getElementById('btn-prestige-open');
     if (btnPrestige && gameState.unlockedFeatures.prestige) {
-        const newMemories = Math.floor(Math.pow(Math.max(0, Math.log10(gameState.allTimeEnergy / 1e21)), 2));
+        const newMemories = Math.floor(Math.pow(Math.max(0, Math.log10(gameState.allTimeEnergy / 1e20)), 4));
         const gained = Math.max(0, newMemories - gameState.memoryPoints);
         btnPrestige.innerHTML = `🔄 転生する <span style="font-size:10px; opacity:0.8;">(予定: +${gained})</span>`;
     }
+
+    const btnResonance = document.getElementById('btn-resonance-open');
+    if (btnResonance && gameState.unlockedFeatures.resonance) {
+        const pendingResonance = Math.floor(Math.pow(1.5, Math.max(0, Math.log10(gameState.allTimeEnergy / 1e100))));
+        btnResonance.innerHTML = `✨ 共鳴地に移行 <span style="font-size:10px; opacity:0.8;">(予定: +${pendingResonance})</span>`;
+    }
+    updateResonanceUI();
     
     const unlockedCount = cardEls.length;
     if (unlockedCount < cards.length) {
@@ -1284,6 +1570,18 @@ function updateUI() {
 }
 
 function handleCoreClick(e) {
+    if (gameState.activeTrial === 'angel') {
+        createClickEffect(e);
+        createParticles(e);
+        return; // 天使の試練中はクリック無効
+    }
+
+    if (gameState.resonanceTree.fire_path_2) {
+        if (gameState.fireOverloadStacks === undefined) gameState.fireOverloadStacks = 0;
+        gameState.fireOverloadStacks = Math.min(1000, gameState.fireOverloadStacks + 10);
+        recalculateStats(); // 即座に倍率反映
+    }
+
     gameState.energy += gameState.energyPerClick;
     gameState.allTimeEnergy += gameState.energyPerClick;
     gameState.totalClicks++;
@@ -1330,11 +1628,19 @@ function createParticles(e) {
 
 function gameLoop() {
     gameState.playTimeSeconds++;
+    // Fire Overload の減衰
+    if (gameState.fireOverloadStacks > 0) {
+        gameState.fireOverloadStacks = Math.max(0, gameState.fireOverloadStacks - 5); // 毎秒5スタック減衰
+        recalculateStats();
+    }
+
     if (gameState.energyPerSecond > 0) {
         gameState.energy += gameState.energyPerSecond;
         gameState.allTimeEnergy += gameState.energyPerSecond;
         updateUI();
     }
+    
+    checkTrialClear();
 }
 
 function checkAchievements() {
@@ -1433,6 +1739,111 @@ function spawnGoldenCard() {
             goldenCardEl = null;
         }
     }, 15000);
+}
+
+// === 共鳴システム関連関数 ===
+function updateResonanceUI() {
+    const tokenEl = document.getElementById('resonance-token-count');
+    if (tokenEl) tokenEl.textContent = formatNumber(gameState.resonanceTokens);
+    
+    // パスUIの更新
+    const a1 = document.getElementById('btn-buy-angel-1');
+    if (a1) {
+        a1.disabled = gameState.resonanceTree.angel_path_1 || gameState.resonanceTokens < 1 || gameState.resonanceTree.fire_path_1;
+        a1.textContent = gameState.resonanceTree.angel_path_1 ? '解放済' : (gameState.resonanceTree.fire_path_1 ? 'ロック中' : '解放 (コスト: 1)');
+        a1.style.background = gameState.resonanceTree.angel_path_1 ? '#00bcd4' : '#444';
+        a1.style.color = gameState.resonanceTree.angel_path_1 ? '#000' : '#888';
+    }
+    const a2 = document.getElementById('btn-buy-angel-2');
+    if (a2) {
+        a2.disabled = gameState.resonanceTree.angel_path_2 || !gameState.resonanceTree.angel_path_1 || gameState.resonanceTokens < 10;
+        a2.textContent = gameState.resonanceTree.angel_path_2 ? '解放済' : '解放 (コスト: 10)';
+        a2.style.background = gameState.resonanceTree.angel_path_2 ? '#00bcd4' : '#444';
+        a2.style.color = gameState.resonanceTree.angel_path_2 ? '#000' : '#888';
+    }
+    const f1 = document.getElementById('btn-buy-fire-1');
+    if (f1) {
+        f1.disabled = gameState.resonanceTree.fire_path_1 || gameState.resonanceTokens < 1 || gameState.resonanceTree.angel_path_1;
+        f1.textContent = gameState.resonanceTree.fire_path_1 ? '解放済' : (gameState.resonanceTree.angel_path_1 ? 'ロック中' : '解放 (コスト: 1)');
+        f1.style.background = gameState.resonanceTree.fire_path_1 ? '#ff5722' : '#444';
+        f1.style.color = gameState.resonanceTree.fire_path_1 ? '#000' : '#888';
+    }
+    const f2 = document.getElementById('btn-buy-fire-2');
+    if (f2) {
+        f2.disabled = gameState.resonanceTree.fire_path_2 || !gameState.resonanceTree.fire_path_1 || gameState.resonanceTokens < 10;
+        f2.textContent = gameState.resonanceTree.fire_path_2 ? '解放済' : '解放 (コスト: 10)';
+        f2.style.background = gameState.resonanceTree.fire_path_2 ? '#ff5722' : '#444';
+        f2.style.color = gameState.resonanceTree.fire_path_2 ? '#000' : '#888';
+    }
+
+    // 倍率表示更新
+    if (document.getElementById('resonance-angel-mult')) document.getElementById('resonance-angel-mult').textContent = window.lastAngelMult ? window.lastAngelMult.toFixed(2) : 1;
+    if (document.getElementById('resonance-fire-mult')) document.getElementById('resonance-fire-mult').textContent = window.lastFireMult ? window.lastFireMult.toFixed(2) : 1;
+
+    // 試練ボタンの更新
+    const btnCancel = document.getElementById('btn-trial-cancel');
+    const btnAngel = document.getElementById('btn-trial-angel');
+    const btnFire = document.getElementById('btn-trial-fire');
+    
+    if (btnCancel) btnCancel.style.display = gameState.activeTrial ? 'block' : 'none';
+    if (btnAngel) {
+        btnAngel.style.display = gameState.activeTrial ? 'none' : 'block';
+        btnAngel.style.opacity = gameState.completedTrials.angel ? '0.5' : '1';
+        btnAngel.innerHTML = gameState.completedTrials.angel ? '👼 天使の試練 (クリア済)' : '👼 天使の試練<br><span style="font-size: 9px; color:#aaa;">クリック封印</span>';
+    }
+    if (btnFire) {
+        btnFire.style.display = gameState.activeTrial ? 'none' : 'block';
+        btnFire.style.opacity = gameState.completedTrials.fire ? '0.5' : '1';
+        btnFire.innerHTML = gameState.completedTrials.fire ? '🔥 炎の試練 (クリア済)' : '🔥 炎の試練<br><span style="font-size: 9px; color:#aaa;">デッキ無効</span>';
+    }
+}
+
+function startTrial(type) {
+    if (gameState.completedTrials[type]) {
+        showToast('TRIAL', 'すでにクリア済みです。', '✨');
+        return;
+    }
+    if (confirm(`【${type === 'angel' ? '天使' : '炎'}の試練】を開始しますか？\nエネルギー等の進捗がリセットされ、試練の特殊ルールが適用されます。\n目標: エネルギー1e50到達`)) {
+        gameState.activeTrial = type;
+        
+        // リセット処理
+        gameState.energy = 0;
+        gameState.energyPerClick = 1;
+        gameState.energyPerSecond = 0;
+        gameState.goldenClicks = 0;
+        gameState.deck = [null, null, null, null, null];
+        cards.forEach(c => c.count = 0);
+        
+        showToast('TRIAL STARTED', '試練が開始されました。目標: 1e50', '⚔️');
+        
+        recalculateStats();
+        updateUI();
+        updateResonanceUI();
+        saveGame();
+    }
+}
+
+function cancelTrial() {
+    if (confirm('試練を中止しますか？\n進捗はリセットされます。')) {
+        gameState.activeTrial = null;
+        gameState.energy = 0;
+        cards.forEach(c => c.count = 0);
+        gameState.deck = [null, null, null, null, null];
+        recalculateStats();
+        updateUI();
+        updateResonanceUI();
+        saveGame();
+    }
+}
+
+function checkTrialClear() {
+    if (gameState.activeTrial && gameState.energy >= 1e50) {
+        gameState.completedTrials[gameState.activeTrial] = true;
+        showToast('TRIAL CLEARED', '試練を達成しました！強大な力を獲得しました。', '🏆');
+        gameState.activeTrial = null;
+        updateResonanceUI();
+        saveGame();
+    }
 }
 
 window.addEventListener('DOMContentLoaded', init);
