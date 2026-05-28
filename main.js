@@ -13,12 +13,42 @@ let cards = window.generatedCards || [];
 
 // 実績データ
 const achievementsList = [
+    // --- 一般・カード収集 ---
     { id: 'a1', title: 'はじまりの一歩', desc: '初めてカードを購入する', condition: () => cards.some(c => c.count > 0) },
-    { id: 'a2', title: 'クリック名人', desc: 'レアカードをクリックする', condition: () => gameState.goldenClicks > 0 },
-    { id: 'a3', title: '1Kの壁', desc: 'エネルギーが1,000を超える', condition: () => gameState.energy >= 1000 },
-    { id: 'a4', title: 'ミリオネア', desc: 'エネルギーが1,000,000を超える', condition: () => gameState.energy >= 1000000 },
-    { id: 'a5', title: 'カードコレクター', desc: 'カードを合計100枚購入する', condition: () => cards.reduce((a, b) => a + b.count, 0) >= 100 },
-    { id: 'a6', title: 'プロの放置民', desc: '毎秒獲得量が10,000を超える', condition: () => gameState.energyPerSecond >= 10000 }
+    { id: 'a5', title: 'カードコレクター', desc: 'カードを累計100枚購入する', condition: () => cards.reduce((a, b) => a + b.count, 0) >= 100 },
+    { id: 'a5_2', title: 'カードマニア', desc: 'カードを累計500枚購入する', condition: () => cards.reduce((a, b) => a + b.count, 0) >= 500 },
+    { id: 'a5_3', title: 'カードマスター', desc: 'カードを累計1000枚購入する', condition: () => cards.reduce((a, b) => a + b.count, 0) >= 1000 },
+    { id: 'a5_4', title: 'カードの神', desc: 'カードを累計5000枚購入する', condition: () => cards.reduce((a, b) => a + b.count, 0) >= 5000 },
+    { id: 'a5_5', title: 'コレクターの極致', desc: 'カードを累計10000枚購入する', condition: () => cards.reduce((a, b) => a + b.count, 0) >= 10000 },
+
+    // --- ゴールデンカード（レア） ---
+    { id: 'a2', title: 'クリック名人', desc: 'レアカードをクリックする', condition: () => gameState.goldenClicks >= 1 },
+    { id: 'a2_2', title: '幸運の持ち主', desc: 'レアカードを10回クリックする', condition: () => gameState.goldenClicks >= 10 },
+    { id: 'a2_3', title: 'レアハンター', desc: 'レアカードを50回クリックする', condition: () => gameState.goldenClicks >= 50 },
+    { id: 'a2_4', title: '奇跡の指先', desc: 'レアカードを100回クリックする', condition: () => gameState.goldenClicks >= 100 },
+
+    // --- 総エネルギー到達 ---
+    { id: 'a3', title: '1Kの壁', desc: 'エネルギーが 1K を超える', condition: () => gameState.energy >= 1000 },
+    { id: 'a4', title: 'ミリオネア', desc: 'エネルギーが 1M を超える', condition: () => gameState.energy >= 1e6 },
+    { id: 'e_1b', title: 'ビリオネア', desc: 'エネルギーが 1B を超える', condition: () => gameState.energy >= 1e9 },
+    { id: 'e_1t', title: 'トリリオネア', desc: 'エネルギーが 1T を超える', condition: () => gameState.energy >= 1e12 },
+    { id: 'e_1qa', title: 'クアッドリリオネア', desc: 'エネルギーが 1Qa を超える', condition: () => gameState.energy >= 1e15 },
+    { id: 'e_1qi', title: 'クインティリオン', desc: 'エネルギーが 1Qi を超える', condition: () => gameState.energy >= 1e18 },
+    { id: 'e_1sx', title: 'セクスティリオン', desc: 'エネルギーが 1Sx を超える', condition: () => gameState.energy >= 1e21 },
+    { id: 'e_1sp', title: 'セプティリオン', desc: 'エネルギーが 1Sp を超える', condition: () => gameState.energy >= 1e24 },
+    { id: 'e_1oc', title: 'オクティリオン', desc: 'エネルギーが 1Oc を超える', condition: () => gameState.energy >= 1e27 },
+    { id: 'e_1no', title: 'ノニリオン', desc: 'エネルギーが 1No を超える', condition: () => gameState.energy >= 1e30 },
+    { id: 'e_1dc', title: 'デシリオン', desc: 'エネルギーが 1Dc を超える', condition: () => gameState.energy >= 1e33 },
+
+    // --- 毎秒獲得量到達 ---
+    { id: 'c_1', title: '放置の目覚め', desc: '毎秒獲得量が 100 を超える', condition: () => gameState.energyPerSecond >= 100 },
+    { id: 'a6', title: 'プロの放置民', desc: '毎秒獲得量が 10K を超える', condition: () => gameState.energyPerSecond >= 10000 },
+    { id: 'c_3', title: '不労所得', desc: '毎秒獲得量が 1M を超える', condition: () => gameState.energyPerSecond >= 1e6 },
+    { id: 'c_4', title: 'エネルギー工場', desc: '毎秒獲得量が 1B を超える', condition: () => gameState.energyPerSecond >= 1e9 },
+    { id: 'c_5', title: '無限の泉', desc: '毎秒獲得量が 1T を超える', condition: () => gameState.energyPerSecond >= 1e12 },
+    { id: 'c_6', title: '星の創造者', desc: '毎秒獲得量が 1Qa を超える', condition: () => gameState.energyPerSecond >= 1e15 },
+    { id: 'c_7', title: '銀河の支配者', desc: '毎秒獲得量が 1Qi を超える', condition: () => gameState.energyPerSecond >= 1e18 },
+    { id: 'c_8', title: '神の領域', desc: '毎秒獲得量が 1Sx を超える', condition: () => gameState.energyPerSecond >= 1e21 }
 ];
 
 // 数値フォーマット関数
