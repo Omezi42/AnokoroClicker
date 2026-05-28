@@ -177,6 +177,18 @@ function init() {
         });
     });
 
+    // Help Tab Listeners
+    document.querySelectorAll('.help-tab-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            document.querySelectorAll('.help-tab-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.help-tab-pane').forEach(p => p.classList.remove('active'));
+            
+            e.target.classList.add('active');
+            const targetId = e.target.getAttribute('data-target');
+            document.getElementById(targetId).classList.add('active');
+        });
+    });
+
 
     document.getElementById('btn-deck-close').addEventListener('click', () => {
         document.getElementById('deck-modal').style.display = 'none';
