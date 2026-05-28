@@ -574,3 +574,34 @@ h1 {
     color: #ff9800;
     font-weight: bold;
 }
+
+/* Awakened Card */
+.card.awakened {
+    border: 3px solid transparent;
+    background-image: linear-gradient(#fff, #fff), linear-gradient(to right, red, orange, yellow, green, blue, indigo, violet);
+    background-origin: border-box;
+    background-clip: padding-box, border-box;
+    animation: rainbow 3s linear infinite;
+}
+
+@keyframes rainbow {
+    0% { filter: hue-rotate(0deg); }
+    100% { filter: hue-rotate(360deg); }
+}
+
+.btn-awaken {
+    background: linear-gradient(45deg, #ff00ff, #00ffff);
+    color: white;
+    border: none;
+    padding: 5px 10px;
+    border-radius: 5px;
+    font-size: 12px;
+    cursor: pointer;
+    font-weight: bold;
+    margin-top: 5px;
+    text-shadow: 1px 1px 2px black;
+    width: 100%;
+}
+.btn-awaken:hover {
+    transform: scale(1.05);
+}
