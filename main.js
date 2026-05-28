@@ -11,6 +11,7 @@ let gameState = {
         preset1: [null, null, null, null, null],
         preset2: [null, null, null, null, null]
     },
+    selectedEnergySkin: null,
     allTimeEnergy: 0,
     unlockedFeatures: {
         deck: false,
@@ -1055,10 +1056,24 @@ function updateClickerEvolutionVisual() {
     // デフォルト画像
     let targetSrc = 'assets/ノーマルエネルギー.png';
     
-    // 最も高ランク（IDが一番大きい）の所持エネルギーカードの画像を使用する
-    if (ownedEnergyCards.length > 0) {
-        const highestEnergyCard = ownedEnergyCards[ownedEnergyCards.length - 1];
-        targetSrc = highestEnergyCard.image;
+    // スキンが手動で選択されているかチェック
+    if (gameState.selectedEnergySkin) {
+        // 所持しているエネルギーカードの中から、選択されたIDを探す
+        const selectedSkinCard = ownedEnergyCards.find(c => c.id === gameState.selectedEnergySkin);
+        if (selectedSkinCard) {
+            targetSrc = selectedSkinCard.image;
+        } else {
+            // 選択されたスキンカードを何らかの理由で失った場合や見つからない場合は選択をリセット
+            gameState.selectedEnergySkin = null;
+        }
+    }
+    
+    // 自動（未選択）の場合、または上記でリセットされた場合
+    if (!gameState.selectedEnergySkin) {
+        if (ownedEnergyCards.length > 0) {
+            const highestEnergyCard = ownedEnergyCards[ownedEnergyCards.length - 1];
+            targetSrc = highestEnergyCard.image;
+        }
     }
     
     if (imgEl.src !== targetSrc && !imgEl.src.endsWith(targetSrc)) {
@@ -1067,6 +1082,55 @@ function updateClickerEvolutionVisual() {
 
     // The user requested to only swap the image without the CSS visual evolution
     container.className = 'core-container';
+}
+
+function openSkinModal() {
+    const modal = document.getElementById('skin-modal');
+    if (!modal) return;
+    
+    const listEl = document.getElementById('skin-list');
+    listEl.innerHTML = '';
+    
+    const ownedEnergyCards = cards
+        .filter(c => c.count > 0 && c.name.includes('エネルギー'))
+        .sort((a, b) => {
+            const idA = parseInt(a.id.split('_')[1]);
+            const idB = parseInt(b.id.split('_')[1]);
+            return idA - idB;
+        });
+        
+    // 自動選択オプション
+    const autoOption = document.createElement('div');
+    autoOption.className = `skin-option ${gameState.selectedEnergySkin === null ? 'selected' : ''}`;
+    autoOption.innerHTML = `
+        <div style="font-size: 24px; text-align: center; margin-bottom: 5px;">✨</div>
+        <div>自動（最高ランク）</div>
+    `;
+    autoOption.onclick = () => {
+        gameState.selectedEnergySkin = null;
+        saveGame();
+        recalculateStats(); // updateClickerEvolutionVisual will be called
+        document.getElementById('skin-modal').style.display = 'none';
+    };
+    listEl.appendChild(autoOption);
+    
+    ownedEnergyCards.forEach(c => {
+        const option = document.createElement('div');
+        option.className = `skin-option ${gameState.selectedEnergySkin === c.id ? 'selected' : ''}`;
+        option.innerHTML = `
+            <img src="${c.image}" style="width: 100%; height: 60px; object-fit: contain; margin-bottom: 5px;" onerror="this.style.display='none'">
+            <div style="font-size: 10px;">${c.name}</div>
+        `;
+        option.onclick = () => {
+            gameState.selectedEnergySkin = c.id;
+            saveGame();
+            recalculateStats();
+            document.getElementById('skin-modal').style.display = 'none';
+        };
+        listEl.appendChild(option);
+    });
+    
+    modal.style.display = 'flex';
 }
 
 // 段階的アンロックの確認
