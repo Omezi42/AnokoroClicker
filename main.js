@@ -605,8 +605,12 @@ function doPrestige() {
 
 // 共鳴召喚処理（Tier 2 Prestige）
 function doResonance() {
-    let gained = Math.floor(Math.pow(1.5, Math.max(0, Math.log10(gameState.allTimeEnergy / 1e100))));
-    if (gained < 0) gained = 0;
+    let gained = 0;
+    if (gameState.allTimeEnergy >= 1e100) {
+        gained = Math.floor(Math.pow(1.5, Math.log10(gameState.allTimeEnergy / 1e100)));
+        // 1e100 ちょうどの場合は1もらえる設定
+        if (gained < 1) gained = 1;
+    }
     
     // 完全リセット（共鳴関連以外）
     gameState.energy = 0;
@@ -617,6 +621,9 @@ function doResonance() {
     gameState.deck = [null, null, null, null, null];
     gameState.awakenedCards = [];
     gameState.awakenedCardTypes = {};
+    
+    // 共鳴ツリーのリセット (選び直せるようにする)
+    gameState.resonanceTree = { angel_path_1: false, angel_path_2: false, fire_path_1: false, fire_path_2: false };
     
     // システムノードのリセット
     for (const key in gameState.skillTree) {
