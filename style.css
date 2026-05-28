@@ -388,3 +388,66 @@ h1 {
     0% { opacity: 1; }
     100% { opacity: 0; }
 }
+
+.btn-info {
+    background: #17a2b8;
+}
+
+/* Achievements List inside Modal */
+.achievements-content {
+    max-width: 500px;
+    width: 90%;
+    max-height: 80vh;
+    display: flex;
+    flex-direction: column;
+}
+
+.achievements-list {
+    overflow-y: auto;
+    text-align: left;
+    margin-top: 15px;
+    padding-right: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.achievement-item {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    padding: 10px;
+    border-radius: 8px;
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+    transition: all 0.2s;
+}
+
+.achievement-item.unlocked {
+    background: linear-gradient(135deg, #fdfbfb 0%, #ebedee 100%);
+    border-color: #ffd700;
+    box-shadow: 0 2px 5px rgba(255, 215, 0, 0.2);
+}
+
+.achievement-item.locked {
+    opacity: 0.6;
+    filter: grayscale(100%);
+}
+
+.ach-icon {
+    font-size: 24px;
+    min-width: 40px;
+    text-align: center;
+}
+
+.ach-info h4 {
+    margin: 0 0 5px 0;
+    color: #333;
+    font-size: 14px;
+}
+
+.ach-info p {
+    margin: 0;
+    font-size: 12px;
+    color: #666;
+}

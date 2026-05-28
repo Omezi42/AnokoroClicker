@@ -55,6 +55,15 @@ function init() {
 
     coreContainerEl.addEventListener('click', handleCoreClick);
 
+    document.getElementById('btn-achievements').addEventListener('click', () => {
+        renderAchievements();
+        document.getElementById('achievements-modal').style.display = 'flex';
+    });
+
+    document.getElementById('btn-achievements-close').addEventListener('click', () => {
+        document.getElementById('achievements-modal').style.display = 'none';
+    });
+
     document.getElementById('btn-save').addEventListener('click', () => {
         saveGame();
         showToast('システム', 'ゲームを手動セーブしました', '💾');
@@ -155,6 +164,32 @@ function showToast(title, message, icon) {
     setTimeout(() => {
         if(toast.parentElement) toast.remove();
     }, 5000);
+}
+
+// 実績モーダルの描画
+function renderAchievements() {
+    const listEl = document.getElementById('achievements-list');
+    listEl.innerHTML = '';
+    
+    // ボーナス表示の更新
+    const bonusEl = document.getElementById('achievement-bonus');
+    const bonusPercent = gameState.achievements.length * 5;
+    bonusEl.textContent = `+${bonusPercent}%`;
+
+    achievementsList.forEach(ach => {
+        const isUnlocked = gameState.achievements.includes(ach.id);
+        const item = document.createElement('div');
+        item.className = `achievement-item ${isUnlocked ? 'unlocked' : 'locked'}`;
+        
+        item.innerHTML = `
+            <div class="ach-icon">${isUnlocked ? '🏆' : '🔒'}</div>
+            <div class="ach-info">
+                <h4>${ach.title}</h4>
+                <p>${isUnlocked ? ach.desc : '条件未達成'}</p>
+            </div>
+        `;
+        listEl.appendChild(item);
+    });
 }
 
 // ステータス再計算（実績ボーナスと相乗効果）
