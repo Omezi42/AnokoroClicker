@@ -13,6 +13,8 @@ let gameState = {
     },
     selectedEnergySkin: null,
     allTimeEnergy: 0,
+    totalClicks: 0,
+    playTimeSeconds: 0,
     unlockedFeatures: {
         deck: false,
         awakening: false,
@@ -171,6 +173,21 @@ function init() {
         document.getElementById('skilltree-modal').style.display = 'none';
     });
 
+    const btnStatsOpen = document.getElementById('btn-stats-open');
+    if (btnStatsOpen) {
+        btnStatsOpen.addEventListener('click', () => {
+            renderStats();
+            document.getElementById('stats-modal').style.display = 'flex';
+        });
+    }
+
+    const btnStatsClose = document.getElementById('btn-stats-close');
+    if (btnStatsClose) {
+        btnStatsClose.addEventListener('click', () => {
+            document.getElementById('stats-modal').style.display = 'none';
+        });
+    }
+
     document.querySelectorAll('.buy-toggle').forEach(btn => {
         btn.addEventListener('click', (e) => {
             document.querySelectorAll('.buy-toggle').forEach(b => b.classList.remove('active'));
@@ -317,6 +334,8 @@ function loadGame() {
                 };
             }
             if (gameState.allTimeEnergy === undefined) gameState.allTimeEnergy = gameState.energy;
+            if (gameState.totalClicks === undefined) gameState.totalClicks = 0;
+            if (gameState.playTimeSeconds === undefined) gameState.playTimeSeconds = 0;
             if (!gameState.unlockedFeatures) {
                 gameState.unlockedFeatures = { deck: false, awakening: false, prestige: false, artifact: false, advancedTree: false };
             } else {
@@ -1188,6 +1207,33 @@ function updateUnlockUI() {
     }
 }
 
+function renderStats() {
+    const statsContainer = document.getElementById('stats-details-content');
+    if (!statsContainer) return;
+    
+    const timeH = Math.floor(gameState.playTimeSeconds / 3600);
+    const timeM = Math.floor((gameState.playTimeSeconds % 3600) / 60);
+    const timeS = gameState.playTimeSeconds % 60;
+    const playTimeStr = `${timeH}時間 ${timeM}分 ${timeS}秒`;
+    
+    const uniqueCards = cards.filter(c => c.count > 0).length;
+    
+    let html = `<ul style="list-style: none; padding: 0; margin: 0; font-size: 16px; color: #333; line-height: 2;">`;
+    html += `<li><strong>総獲得エネルギー:</strong> <span style="color:#e040fb">${formatNumber(gameState.allTimeEnergy)}</span></li>`;
+    html += `<li><strong>総クリック回数:</strong> <span style="color:#00bcd4">${gameState.totalClicks.toLocaleString()} 回</span></li>`;
+    html += `<li><strong>プレイ時間:</strong> <span style="color:#4caf50">${playTimeStr}</span></li>`;
+    html += `<li><strong>所持カード種類:</strong> ${uniqueCards} / ${cards.length} 種</li>`;
+    html += `<li><strong>覚醒済みカード:</strong> ${gameState.awakenedCards.length} 枚</li>`;
+    html += `<li><strong>解除済み実績:</strong> ${gameState.achievements.length} 個</li>`;
+    
+    if (gameState.unlockedFeatures.prestige) {
+        html += `<li><strong>現在のメモリーポイント:</strong> <span style="color:#ff9800">${gameState.memoryPoints.toLocaleString()}</span></li>`;
+    }
+    
+    html += `</ul>`;
+    statsContainer.innerHTML = html;
+}
+
 function updateUI() {
     energyCountEl.textContent = formatNumber(gameState.energy);
     energyPerClickEl.textContent = formatNumber(gameState.energyPerClick);
@@ -1240,6 +1286,7 @@ function updateUI() {
 function handleCoreClick(e) {
     gameState.energy += gameState.energyPerClick;
     gameState.allTimeEnergy += gameState.energyPerClick;
+    gameState.totalClicks++;
     updateUI();
     createClickEffect(e);
     createParticles(e);
@@ -1282,6 +1329,7 @@ function createParticles(e) {
 }
 
 function gameLoop() {
+    gameState.playTimeSeconds++;
     if (gameState.energyPerSecond > 0) {
         gameState.energy += gameState.energyPerSecond;
         gameState.allTimeEnergy += gameState.energyPerSecond;
