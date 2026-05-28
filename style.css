@@ -18,7 +18,8 @@ body {
         radial-gradient(at 0% 0%, hsla(253,16%,7%,0.05) 0, transparent 50%), 
         radial-gradient(at 50% 0%, hsla(225,39%,30%,0.05) 0, transparent 50%), 
         radial-gradient(at 100% 0%, hsla(339,49%,30%,0.05) 0, transparent 50%);
-    min-height: 100vh;
+    height: 100vh;
+    overflow: hidden;
     display: flex;
     flex-direction: column;
 }
@@ -65,6 +66,7 @@ h1 {
     margin: 0 auto;
     width: 100%;
     box-sizing: border-box;
+    overflow: hidden;
 }
 
 .click-area {
@@ -126,7 +128,6 @@ h1 {
     padding: 20px;
     box-shadow: var(--card-shadow);
     overflow-y: auto;
-    max-height: calc(100vh - 160px);
 }
 
 .upgrade-area h2 {
@@ -604,4 +605,55 @@ h1 {
 }
 .btn-awaken:hover {
     transform: scale(1.05);
+}
+
+/* Mobile Responsiveness */
+@media (max-width: 768px) {
+    .main-content {
+        flex-direction: column;
+        padding: 10px;
+        gap: 15px;
+    }
+    
+    .click-area {
+        flex: 0 0 auto;
+        min-height: 150px;
+    }
+    
+    .core-container {
+        width: 150px;
+        height: 150px;
+    }
+    
+    .upgrade-area {
+        padding: 10px;
+    }
+    
+    .energy-stats {
+        flex-direction: column;
+        gap: 5px;
+    }
+    
+    .stats-panel p {
+        margin: 5px 0;
+        font-size: 14px;
+    }
+    
+    h1 {
+        font-size: 16px;
+        margin-bottom: 5px;
+    }
+    
+    .energy-display {
+        font-size: 20px;
+    }
+    
+    .deck-container {
+        padding: 10px;
+    }
+    
+    .deck-slot {
+        width: 40px;
+        height: 60px;
+    }
 }
