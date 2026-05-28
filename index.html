@@ -58,13 +58,26 @@
             <!-- DECK TAB -->
             <div id="tab-deck" class="tab-pane">
                 <div class="deck-container">
-                    <h3>デッキ（装備中のカード） <button id="btn-synergy-open" class="btn btn-sm" style="font-size:12px; background: #ff9800; padding: 2px 8px; margin-left: 10px;">📊 ボーナス詳細を確認</button></h3>
+                    <h3 style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 5px;">
+                        <span>デッキ（装備中のカード）</span>
+                        <button id="btn-synergy-open" class="btn btn-sm" style="font-size:12px; background: #ff9800; padding: 2px 8px;">📊 詳細</button>
+                    </h3>
+                    <div class="deck-presets" style="display: flex; gap: 10px; margin-bottom: 10px;">
+                        <button id="btn-preset-save-1" class="btn btn-sm" style="background: #3f51b5; flex: 1;">💾 保存1</button>
+                        <button id="btn-preset-load-1" class="btn btn-sm" style="background: #00bcd4; flex: 1;">📂 読込1</button>
+                        <button id="btn-preset-save-2" class="btn btn-sm" style="background: #3f51b5; flex: 1;">💾 保存2</button>
+                        <button id="btn-preset-load-2" class="btn btn-sm" style="background: #00bcd4; flex: 1;">📂 読込2</button>
+                    </div>
                     <div class="deck-slots">
                         <div class="deck-slot" data-index="0"></div>
                         <div class="deck-slot" data-index="1"></div>
                         <div class="deck-slot" data-index="2"></div>
                         <div class="deck-slot" data-index="3"></div>
                         <div class="deck-slot" data-index="4"></div>
+                        <!-- 6th Artifact Slot, dynamically shown when unlocked -->
+                        <div class="deck-slot artifact-slot" data-index="5" id="deck-slot-artifact" style="display: none; border-color: #e040fb; background: rgba(224, 64, 251, 0.05);">
+                            <span style="color:#e040fb; font-size:10px; font-weight:bold;">AF枠</span>
+                        </div>
                     </div>
                 </div>
                 <div style="font-size: 12px; color: #666; padding: 10px; line-height: 1.5;">
@@ -144,7 +157,7 @@
                         <li><strong>★先駆者</strong>: デッキ内でこのカードのIDが最も小さければ生産力 3倍</li>
                         <li><strong>★殿軍</strong>: デッキ内でこのカードのIDが最も大きければ生産力 3倍</li>
                         <li><strong>★両極端</strong>: デッキにクリック型と放置型が両方存在すれば、全体生産力 1.5倍</li>
-                        <li><strong>★純血</strong>: デッキ5枠が全て同じ型(クリックのみ/放置のみ等)なら全体生産力 2倍</li>
+                        <li><strong>★純血</strong>: デッキ5枠が全て埋まり、他のカード4枠も全て同じ型(クリック型のみ、または放置型のみ)なら全体生産力 2倍</li>
                         <li><strong>★最安値</strong>: デッキ内で基礎コストが最も低ければ生産力 3倍</li>
                         <li><strong>★最高値</strong>: デッキ内で基礎コストが最も高ければ生産力 3倍</li>
                         <li><strong>★相互支援</strong>: デッキ内で最もレベルの低いカードの生産力が 2倍になる</li>

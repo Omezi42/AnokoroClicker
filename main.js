@@ -7,20 +7,32 @@ let gameState = {
     achievements: [],
     goldenClicks: 0,
     deck: [null, null, null, null, null],
+    presets: {
+        preset1: [null, null, null, null, null],
+        preset2: [null, null, null, null, null]
+    },
     allTimeEnergy: 0,
     unlockedFeatures: {
         deck: false,
         awakening: false,
-        prestige: false
+        prestige: false,
+        artifact: false,
+        advancedTree: false
     },
     awakenedCards: [],
+    awakenedCardTypes: {}, // cardId: 'click' or 'idle' (flipped type)
     memoryPoints: 0,
     skillTree: {
         node_alpha: { level: 0 },
         node_beta: { level: 0 },
         node_gamma: { level: 0 },
         node_delta: { level: 0 },
-        node_epsilon: { level: 0 }
+        node_epsilon: { level: 0 },
+        node_inf_click: { level: 0 },
+        node_inf_idle: { level: 0 },
+        node_artifact_forge: { level: 0 },
+        node_synergy_overdrive: { level: 0 },
+        node_memory_resonance: { level: 0 }
     }
 };
 
@@ -30,7 +42,14 @@ const systemNodes = {
     node_beta: { id: 'node_beta', name: 'SYS.COST_COMPRESSION', desc: 'Purchase Scaling Ratio -0.01', maxLevel: 10, cost: (lv) => 3 + lv * 2 },
     node_gamma: { id: 'node_gamma', name: 'SYS.PROBABILITY_OVERRIDE', desc: 'Rare Anomaly Spawn Rate +5%', maxLevel: 5, cost: (lv) => 5 + lv * 5 },
     node_delta: { id: 'node_delta', name: 'SYS.REWARD_AMPLIFIER', desc: 'Rare Anomaly Yield +50%', maxLevel: 10, cost: (lv) => 2 + lv * 3 },
-    node_epsilon: { id: 'node_epsilon', name: 'SYS.AWAKEN_OPTIMIZATION', desc: 'Awakening Energy Requirement / 10', maxLevel: 5, cost: (lv) => 10 + lv * 10 }
+    node_epsilon: { id: 'node_epsilon', name: 'SYS.AWAKEN_OPTIMIZATION', desc: 'Awakening Energy Requirement / 10', maxLevel: 5, cost: (lv) => 10 + lv * 10 },
+    // 無限アップグレードノード (1e45以降)
+    node_inf_click: { id: 'node_inf_click', name: 'SYS.INFINITY_CLICK', desc: 'Click Base Production +5% (Infinite)', maxLevel: Infinity, cost: (lv) => Math.floor(1e5 * Math.pow(1.5, lv)) },
+    node_inf_idle: { id: 'node_inf_idle', name: 'SYS.INFINITY_IDLE', desc: 'Idle Base Production +5% (Infinite)', maxLevel: Infinity, cost: (lv) => Math.floor(1e5 * Math.pow(1.5, lv)) },
+    // 上位ルートノード
+    node_artifact_forge: { id: 'node_artifact_forge', name: 'SYS.ARTIFACT_FORGE', desc: 'Unlock 6th Artifact slot (AF)', maxLevel: 1, cost: (lv) => 1e6 },
+    node_synergy_overdrive: { id: 'node_synergy_overdrive', name: 'SYS.SYNERGY_OVERDRIVE', desc: 'Deck Synergy limit +50%', maxLevel: 5, cost: (lv) => 1e8 * Math.pow(10, lv) },
+    node_memory_resonance: { id: 'node_memory_resonance', name: 'SYS.MEMORY_RESONANCE', desc: 'Global production +1% per owned memory point', maxLevel: 10, cost: (lv) => 1e10 * Math.pow(10, lv) }
 };
 
 let buyMode = '1';
@@ -42,6 +61,7 @@ let lastIndividualBonus = {};
 let lastAchievementMultiplier = 1.0;
 let lastMemoryMultiplier = 1.0;
 let lastAlphaBonus = 1.0;
+let lastActiveGlobalSkills = [];
 let lastDeckDetails = [];
 let cards = window.generatedCards || [];
 
@@ -182,11 +202,16 @@ function init() {
     document.querySelectorAll('.help-tab-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
             document.querySelectorAll('.help-tab-btn').forEach(b => b.classList.remove('active'));
-            document.querySelectorAll('.help-tab-pane').forEach(p => p.classList.remove('active'));
+            document.querySelectorAll('.help-tab-pane').forEach(p => {
+                p.classList.remove('active');
+                p.style.display = 'none';
+            });
             
             e.target.classList.add('active');
             const targetId = e.target.getAttribute('data-target');
-            document.getElementById(targetId).classList.add('active');
+            const targetPane = document.getElementById(targetId);
+            targetPane.classList.add('active');
+            targetPane.style.display = 'flex';
         });
     });
 
@@ -203,6 +228,35 @@ function init() {
             document.getElementById('deck-modal').style.display = 'none';
         }
     });
+
+    // デッキプリセット保存・読込処理のリスナー
+    const savePreset = (num) => {
+        gameState.presets[`preset${num}`] = [...gameState.deck];
+        saveGame();
+        showToast('デッキ', `プリセット${num}に現在のデッキを保存しました`, '💾');
+    };
+
+    const loadPreset = (num) => {
+        const preset = gameState.presets[`preset${num}`];
+        if (preset) {
+            // 現在のデッキ長に合わせる（アーティファクト枠対応）
+            const maxSlots = (gameState.unlockedFeatures.artifact || getSkillLevel('node_artifact_forge') > 0) ? 6 : 5;
+            gameState.deck = [];
+            for (let i = 0; i < maxSlots; i++) {
+                gameState.deck.push(preset[i] !== undefined ? preset[i] : null);
+            }
+            recalculateStats();
+            renderDeck();
+            showToast('デッキ', `プリセット${num}を読み込みました`, '📂');
+        } else {
+            showToast('エラー', '保存されたプリセットがありません', '⚠');
+        }
+    };
+
+    document.getElementById('btn-preset-save-1').addEventListener('click', () => savePreset(1));
+    document.getElementById('btn-preset-load-1').addEventListener('click', () => loadPreset(1));
+    document.getElementById('btn-preset-save-2').addEventListener('click', () => savePreset(2));
+    document.getElementById('btn-preset-load-2').addEventListener('click', () => loadPreset(2));
 
     // 遊び方・ヘルプモーダル
     document.getElementById('btn-help-open').addEventListener('click', () => {
@@ -255,15 +309,44 @@ function loadGame() {
             gameState = { ...gameState, ...parsed.state };
             
             if (!gameState.deck) gameState.deck = [null, null, null, null, null];
+            if (!gameState.presets) {
+                gameState.presets = {
+                    preset1: [null, null, null, null, null],
+                    preset2: [null, null, null, null, null]
+                };
+            }
             if (gameState.allTimeEnergy === undefined) gameState.allTimeEnergy = gameState.energy;
-            if (!gameState.unlockedFeatures) gameState.unlockedFeatures = { deck: false, awakening: false, prestige: false };
+            if (!gameState.unlockedFeatures) {
+                gameState.unlockedFeatures = { deck: false, awakening: false, prestige: false, artifact: false, advancedTree: false };
+            } else {
+                if (gameState.unlockedFeatures.artifact === undefined) gameState.unlockedFeatures.artifact = false;
+                if (gameState.unlockedFeatures.advancedTree === undefined) gameState.unlockedFeatures.advancedTree = false;
+            }
             if (!gameState.awakenedCards) gameState.awakenedCards = [];
+            if (!gameState.awakenedCardTypes) gameState.awakenedCardTypes = {};
             if (gameState.memoryPoints === undefined) gameState.memoryPoints = 0;
             const correctMaxMemories = Math.floor(Math.pow(Math.max(0, Math.log10(gameState.allTimeEnergy / 1e21)), 2));
             if (gameState.memoryPoints > correctMaxMemories) {
                 gameState.memoryPoints = correctMaxMemories;
             }
-            if (!gameState.skillTree) gameState.skillTree = { node_alpha:{level:0}, node_beta:{level:0}, node_gamma:{level:0}, node_delta:{level:0}, node_epsilon:{level:0} };
+            
+            const defaultSkillTree = {
+                node_alpha: { level: 0 },
+                node_beta: { level: 0 },
+                node_gamma: { level: 0 },
+                node_delta: { level: 0 },
+                node_epsilon: { level: 0 },
+                node_inf_click: { level: 0 },
+                node_inf_idle: { level: 0 },
+                node_artifact_forge: { level: 0 },
+                node_synergy_overdrive: { level: 0 },
+                node_memory_resonance: { level: 0 }
+            };
+            if (!gameState.skillTree) {
+                gameState.skillTree = defaultSkillTree;
+            } else {
+                gameState.skillTree = { ...defaultSkillTree, ...gameState.skillTree };
+            }
             
             if (parsed.cardCounts) {
                 cards.forEach((c, i) => {
@@ -352,28 +435,36 @@ function doPrestige() {
 }
 
 function renderSkillTree() {
-    document.getElementById('available-memory').textContent = gameState.memoryPoints;
+    document.getElementById('available-memory').textContent = formatNumber(gameState.memoryPoints);
     const container = document.getElementById('skill-nodes-container');
     container.innerHTML = '';
 
     for (const [id, node] of Object.entries(systemNodes)) {
+        // ペーシング制御：上位ツリーがアンロックされていない場合は上位ノードを表示しない
+        const isAdvancedNode = ['node_inf_click', 'node_inf_idle', 'node_artifact_forge', 'node_synergy_overdrive', 'node_memory_resonance'].includes(id);
+        if (isAdvancedNode && !gameState.unlockedFeatures.advancedTree) {
+            continue;
+        }
+
         const lv = getSkillLevel(id);
         const cost = node.cost(lv);
         const canBuy = gameState.memoryPoints >= cost && lv < node.maxLevel;
         
         const el = document.createElement('div');
-        el.style.border = '1px solid #444';
+        el.style.border = isAdvancedNode ? '1px solid #e040fb' : '1px solid #444';
         el.style.padding = '10px';
-        el.style.background = '#222';
+        el.style.background = isAdvancedNode ? '#1e002a' : '#222';
         el.style.fontFamily = 'monospace';
         
+        const displayMax = node.maxLevel === Infinity ? '∞' : node.maxLevel;
+
         el.innerHTML = `
-            <div style="color: #00ffcc; font-size: 14px; font-weight: bold; margin-bottom: 5px;">${node.name}</div>
+            <div style="color: ${isAdvancedNode ? '#e040fb' : '#00ffcc'}; font-size: 14px; font-weight: bold; margin-bottom: 5px;">${node.name}</div>
             <div style="color: #aaa; font-size: 11px; margin-bottom: 10px;">${node.desc}</div>
             <div style="display: flex; justify-content: space-between; align-items: center;">
-                <span style="color: #ffca28; font-size: 12px;">Lv. ${lv} / ${node.maxLevel}</span>
-                <button class="btn" style="background: ${canBuy ? '#00ffcc' : '#444'}; color: ${canBuy ? '#000' : '#888'}; padding: 5px 10px; font-size: 10px;" ${canBuy ? '' : 'disabled'}>
-                    ${lv >= node.maxLevel ? 'MAX' : `UPGRADE [${cost} MEM]` }
+                <span style="color: #ffca28; font-size: 12px;">Lv. ${lv} / ${displayMax}</span>
+                <button class="btn" style="background: ${canBuy ? (isAdvancedNode ? '#e040fb' : '#00ffcc') : '#444'}; color: ${canBuy ? '#000' : '#888'}; padding: 5px 10px; font-size: 10px;" ${canBuy ? '' : 'disabled'}>
+                    ${lv >= node.maxLevel ? 'MAX' : `UPGRADE [${formatNumber(cost)} MEM]` }
                 </button>
             </div>
         `;
@@ -418,6 +509,11 @@ function openDeckSelectionModal() {
             
             if (!isEquipped) {
                 el.addEventListener('click', () => {
+                    // 6番目のスロット（インデックス5）はアーティファクト専用
+                    if (selectingDeckSlot === 5 && !card.name.includes('エネルギー')) {
+                        showToast('エラー', 'アーティファクト枠には「エネルギー」カードのみ装備可能です', '⚠️');
+                        return;
+                    }
                     gameState.deck[selectingDeckSlot] = card.id;
                     document.getElementById('deck-modal').style.display = 'none';
                     recalculateStats();
@@ -435,6 +531,14 @@ function renderDeck() {
     slots.forEach((slot, index) => {
         const cardId = gameState.deck[index];
         slot.innerHTML = '';
+        
+        // アーティファクトスロットの表示制御
+        if (index === 5) {
+            const isUnlocked = gameState.unlockedFeatures.artifact || getSkillLevel('node_artifact_forge') > 0;
+            slot.style.display = isUnlocked ? 'flex' : 'none';
+            if (!isUnlocked) return;
+        }
+
         if (cardId) {
             const card = cards.find(c => c.id === cardId);
             if (card) {
@@ -480,6 +584,11 @@ function calculateMaxPurchase(card, currentEnergy) {
 function recalculateStats() {
     let baseClick = 1;
     let baseIdle = 0;
+    
+    // 無限アップグレードノードによる基礎値アップ
+    const infClickLv = getSkillLevel('node_inf_click');
+    const infIdleLv = getSkillLevel('node_inf_idle');
+    
     let globalSynergyMultiplier = 1.0;
     const individualBonus = {};
     
@@ -487,18 +596,34 @@ function recalculateStats() {
     const alphaLv = getSkillLevel('node_alpha');
     globalSynergyMultiplier *= (1 + alphaLv * 1.0);
     
+    // メモリー共鳴（SYS.MEMORY_RESONANCE）による全体倍率
+    const memoryResonanceLv = getSkillLevel('node_memory_resonance');
+    if (memoryResonanceLv > 0) {
+        globalSynergyMultiplier *= (1 + (gameState.memoryPoints * 0.01 * memoryResonanceLv));
+    }
+    
+    // シナジー倍率の制限解除（SYS.SYNERGY_OVERDRIVE）
+    const synergyOverdriveLv = getSkillLevel('node_synergy_overdrive');
+    const maxDeckSynergyBonus = 1.0 + (synergyOverdriveLv * 0.5); // デフォルト1.0x、レベル毎に+0.5x上限増加
+
     if (gameState.unlockedFeatures.deck) {
         let deckCards = gameState.deck.map(id => cards.find(c => c.id === id)).filter(Boolean);
         let totalOwnedCards = cards.reduce((sum, c) => sum + c.count, 0);
 
         deckCards.forEach(c => individualBonus[c.id] = 1.0);
+        lastActiveGlobalSkills = [];
 
         deckCards.forEach((card, index) => {
             const skill = card.skill.id;
+            // 反転したカードタイプを取得
+            const cardType = (gameState.awakenedCards.includes(card.id) && gameState.awakenedCardTypes[card.id]) 
+                ? gameState.awakenedCardTypes[card.id] 
+                : card.type;
+
             switch (skill) {
                 case 's1':
                     if (index > 0 && deckCards[index-1]) individualBonus[deckCards[index-1].id] *= 1.5;
-                    if (index < 4 && deckCards[index+1]) individualBonus[deckCards[index+1].id] *= 1.5;
+                    if (index < deckCards.length - 1 && deckCards[index+1]) individualBonus[deckCards[index+1].id] *= 1.5;
                     break;
                 case 's2':
                     if (deckCards.length === 1) individualBonus[card.id] *= 5;
@@ -506,11 +631,19 @@ function recalculateStats() {
                 case 's3':
                     if (deckCards.length === 5) {
                         const firstLevel = deckCards[0].count;
-                        if (deckCards.every(c => c.count === firstLevel)) globalSynergyMultiplier *= 3;
+                        if (deckCards.every(c => c.count === firstLevel)) {
+                            const mult = (3 * maxDeckSynergyBonus);
+                            globalSynergyMultiplier *= mult;
+                            lastActiveGlobalSkills.push({name: card.skill.name, desc: `全体生産力 x${mult.toFixed(2)}`});
+                        }
                     }
                     break;
                 case 's4':
-                    globalSynergyMultiplier *= (1 + Math.floor(totalOwnedCards / 100) * 0.01);
+                    const s4Mult = (1 + Math.floor(totalOwnedCards / 100) * 0.01 * maxDeckSynergyBonus);
+                    if (s4Mult > 1.0) {
+                        globalSynergyMultiplier *= s4Mult;
+                        lastActiveGlobalSkills.push({name: card.skill.name, desc: `全体生産力 x${s4Mult.toFixed(2)} (カード${totalOwnedCards}枚)`});
+                    }
                     break;
                 case 's5':
                     individualBonus[card.id] *= (index + 1);
@@ -521,21 +654,39 @@ function recalculateStats() {
                     if (card.count >= othersMax + 100) individualBonus[card.id] *= 4;
                     break;
                 case 's7':
-                    const clickCount = deckCards.filter(c => c.type === 'click').length;
-                    individualBonus[card.id] *= (1 + clickCount * 0.3);
+                    const clickCount = deckCards.filter(c => {
+                        const t = (gameState.awakenedCards.includes(c.id) && gameState.awakenedCardTypes[c.id]) ? gameState.awakenedCardTypes[c.id] : c.type;
+                        return t === 'click';
+                    }).length;
+                    individualBonus[card.id] *= (1 + clickCount * 0.3 * maxDeckSynergyBonus);
                     break;
                 case 's8':
-                    const idleCount = deckCards.filter(c => c.type === 'idle').length;
-                    individualBonus[card.id] *= (1 + idleCount * 0.3);
+                    const idleCount = deckCards.filter(c => {
+                        const t = (gameState.awakenedCards.includes(c.id) && gameState.awakenedCardTypes[c.id]) ? gameState.awakenedCardTypes[c.id] : c.type;
+                        return t === 'idle';
+                    }).length;
+                    individualBonus[card.id] *= (1 + idleCount * 0.3 * maxDeckSynergyBonus);
                     break;
                 case 's9':
-                    if (index === 2 && deckCards.length === 5) globalSynergyMultiplier *= 2;
+                    if (index === 2 && deckCards.length === 5) {
+                        const mult = (2 * maxDeckSynergyBonus);
+                        globalSynergyMultiplier *= mult;
+                        lastActiveGlobalSkills.push({name: card.skill.name, desc: `全体生産力 x${mult.toFixed(2)}`});
+                    }
                     break;
                 case 's10':
-                    if (deckCards.length > 0 && deckCards.every(c => c.count % 2 !== 0)) globalSynergyMultiplier *= 1.5;
+                    if (deckCards.length > 0 && deckCards.every(c => c.count % 2 !== 0)) {
+                        const mult = (1.5 * maxDeckSynergyBonus);
+                        globalSynergyMultiplier *= mult;
+                        lastActiveGlobalSkills.push({name: card.skill.name, desc: `全体生産力 x${mult.toFixed(2)}`});
+                    }
                     break;
                 case 's11':
-                    if (deckCards.length > 0 && deckCards.every(c => c.count % 2 === 0)) globalSynergyMultiplier *= 1.5;
+                    if (deckCards.length > 0 && deckCards.every(c => c.count % 2 === 0)) {
+                        const mult = (1.5 * maxDeckSynergyBonus);
+                        globalSynergyMultiplier *= mult;
+                        lastActiveGlobalSkills.push({name: card.skill.name, desc: `全体生産力 x${mult.toFixed(2)}`});
+                    }
                     break;
                 case 's12':
                     const minIdCard = deckCards.reduce((prev, curr) => (parseInt(prev.id.split('_')[1]) < parseInt(curr.id.split('_')[1]) ? prev : curr));
@@ -546,12 +697,30 @@ function recalculateStats() {
                     if (maxIdCard.id === card.id) individualBonus[card.id] *= 3;
                     break;
                 case 's14':
-                    const hasClick = deckCards.some(c => c.type === 'click');
-                    const hasIdle = deckCards.some(c => c.type === 'idle');
-                    if (hasClick && hasIdle) globalSynergyMultiplier *= 1.5;
+                    const hasClick = deckCards.some(c => {
+                        const t = (gameState.awakenedCards.includes(c.id) && gameState.awakenedCardTypes[c.id]) ? gameState.awakenedCardTypes[c.id] : c.type;
+                        return t === 'click';
+                    });
+                    const hasIdle = deckCards.some(c => {
+                        const t = (gameState.awakenedCards.includes(c.id) && gameState.awakenedCardTypes[c.id]) ? gameState.awakenedCardTypes[c.id] : c.type;
+                        return t === 'idle';
+                    });
+                    if (hasClick && hasIdle) {
+                        const mult = (1.5 * maxDeckSynergyBonus);
+                        globalSynergyMultiplier *= mult;
+                        lastActiveGlobalSkills.push({name: card.skill.name, desc: `全体生産力 x${mult.toFixed(2)}`});
+                    }
                     break;
                 case 's15':
-                    if (deckCards.length === 5 && deckCards.every(c => c.type === deckCards[0].type)) globalSynergyMultiplier *= 2;
+                    if (deckCards.length === 5 && deckCards.every(c => {
+                        const t = (gameState.awakenedCards.includes(c.id) && gameState.awakenedCardTypes[c.id]) ? gameState.awakenedCardTypes[c.id] : c.type;
+                        const t0 = (gameState.awakenedCards.includes(deckCards[0].id) && gameState.awakenedCardTypes[deckCards[0].id]) ? gameState.awakenedCardTypes[deckCards[0].id] : deckCards[0].type;
+                        return t === t0;
+                    })) {
+                        const mult = (2 * maxDeckSynergyBonus);
+                        globalSynergyMultiplier *= mult;
+                        lastActiveGlobalSkills.push({name: card.skill.name, desc: `全体生産力 x${mult.toFixed(2)}`});
+                    }
                     break;
                 case 's16':
                     const minCostCard = deckCards.reduce((prev, curr) => (prev.baseCost < curr.baseCost ? prev : curr));
@@ -569,12 +738,20 @@ function recalculateStats() {
                     if (deckCards.length === 5) {
                         let isStairs = true;
                         for(let i=0; i<4; i++) { if (deckCards[i].count >= deckCards[i+1].count) isStairs = false; }
-                        if (isStairs) globalSynergyMultiplier *= 3;
+                        if (isStairs) {
+                            const mult = (3 * maxDeckSynergyBonus);
+                            globalSynergyMultiplier *= mult;
+                            lastActiveGlobalSkills.push({name: card.skill.name, desc: `全体生産力 x${mult.toFixed(2)}`});
+                        }
                     }
                     break;
                 case 's20':
                     const uniqueSkills = new Set(deckCards.map(c => c.skill.id)).size;
-                    globalSynergyMultiplier *= (1 + uniqueSkills * 0.1);
+                    const s20Mult = (1 + uniqueSkills * 0.1 * maxDeckSynergyBonus);
+                    if (s20Mult > 1.0) {
+                        globalSynergyMultiplier *= s20Mult;
+                        lastActiveGlobalSkills.push({name: card.skill.name, desc: `全体生産力 x${s20Mult.toFixed(2)} (スキル${uniqueSkills}種)`});
+                    }
                     break;
             }
         });
@@ -599,9 +776,18 @@ function recalculateStats() {
         
         const totalValue = card.value * card.count * selfMultiplier;
         
-        if (card.type === 'click') baseClick += totalValue;
-        if (card.type === 'idle') baseIdle += totalValue;
+        // 反転後のカードタイプに合わせて加算先を分ける
+        const cardType = (gameState.awakenedCards.includes(card.id) && gameState.awakenedCardTypes[card.id]) 
+            ? gameState.awakenedCardTypes[card.id] 
+            : card.type;
+
+        if (cardType === 'click') baseClick += totalValue;
+        if (cardType === 'idle') baseIdle += totalValue;
     });
+
+    // 無限アップグレードの基礎効果を乗算
+    baseClick *= (1 + infClickLv * 0.05);
+    baseIdle *= (1 + infIdleLv * 0.05);
 
     const achievementMultiplier = 1 + (gameState.achievements.length * 0.05);
     const memoryMultiplier = 1 + (gameState.memoryPoints * 0.1);
@@ -636,6 +822,9 @@ function recalculateStats() {
     if (synergyBtn) {
         synergyBtn.title = `実績: x${achievementMultiplier.toFixed(2)} | メモリー: x${memoryMultiplier.toFixed(2)} | システム: x${globalSynergyMultiplier.toFixed(2)}`;
     }
+    
+    // クリッカー対象（中央円）の進化ビジュアル更新
+    updateClickerEvolutionVisual();
 }
 
 function renderSynergyDetails() {
@@ -679,6 +868,16 @@ function renderSynergyDetails() {
     }
 
     html += `</table></div>`;
+
+    if (lastActiveGlobalSkills.length > 0) {
+        html += `<div style="margin-top: 15px;">
+            <h4 style="margin: 0 0 5px 0; color: #333;">✨ 発動中の全体スキル</h4>
+            <ul style="margin: 0; padding-left: 20px; color: #d32f2f; font-size: 13px;">`;
+        lastActiveGlobalSkills.forEach(skill => {
+            html += `<li><strong>${skill.name}:</strong> ${skill.desc}</li>`;
+        });
+        html += `</ul></div>`;
+    }
     
     container.innerHTML = html;
 }
@@ -781,15 +980,26 @@ function renderCards() {
         const equipTag = isEquipped ? '<span style="color:#ff9800; font-size:10px; margin-left:5px;">[装備中]</span>' : '';
 
         let awakenHtml = '';
+        const currentType = (isAwakened && gameState.awakenedCardTypes[card.id]) ? gameState.awakenedCardTypes[card.id] : card.type;
+        const typeLabel = currentType === 'click' ? 'クリック型' : '放置型';
+
         if (gameState.unlockedFeatures.awakening && !isAwakened) {
             const awakenCost = getAwakenCost(card);
             const canAwaken = gameState.energy >= awakenCost;
             awakenHtml = `<button class="btn-awaken" ${canAwaken ? '' : 'style="opacity:0.5;"'} onclick="awakenCard('${card.id}')">★覚醒 (${formatNumber(awakenCost)})</button>`;
         } else if (isAwakened) {
-            awakenHtml = `<div style="font-size:10px; color:magenta; font-weight:bold; display: flex; align-items: center; justify-content: center; flex: 1;">✨覚醒済✨</div>`;
+            awakenHtml = `
+                <div style="display: flex; flex-direction: column; gap: 2px; align-items: center; justify-content: center; flex: 1;">
+                    <span style="font-size:10px; color:magenta; font-weight:bold;">✨覚醒済 (${typeLabel})✨</span>
+                    <button class="btn-sm" style="background:#673ab7; color:white; font-size:9px; padding: 2px 6px; border-radius:4px; border:none; cursor:pointer;" onclick="toggleCardType('${card.id}')">タイプ反転</button>
+                </div>
+            `;
         }
 
         const buyBtnText = `購入x${buyMode === 'MAX' ? displayAmount : buyMode} (${formatNumber(displayCost)})`;
+
+        // 表示用のPrefixを反転タイプに合わせて変更
+        const descPrefix = currentType === 'click' ? 'クリック獲得量 +' : '毎秒獲得量 +';
 
         cardEl.innerHTML = `
             <div class="card-image-container" title="${card.skill.name}: ${card.skill.desc}">
@@ -797,7 +1007,7 @@ function renderCards() {
             </div>
             <div class="card-info">
                 <div class="card-name">${card.name} ${newTag} ${equipTag}</div>
-                <div class="card-desc">${card.descPrefix} ${formatNumber(card.value * multiplier)} <br><span style="font-size:10px; color:#ff9800;">★${card.skill.name}</span></div>
+                <div class="card-desc">${descPrefix} ${formatNumber(card.value * multiplier)} <br><span style="font-size:10px; color:#ff9800;">★${card.skill.name}</span></div>
                 <div style="display: flex; gap: 5px; margin-top: 5px;">
                     <button class="btn-buy-card" onclick="buyCard('${card.id}')">${buyBtnText}</button>
                     ${awakenHtml}
@@ -810,51 +1020,106 @@ function renderCards() {
     }
 }
 
-function updateUI() {
-    energyCountEl.textContent = formatNumber(gameState.energy);
-    energyPerClickEl.textContent = formatNumber(gameState.energyPerClick);
-    energyPerSecondEl.textContent = formatNumber(gameState.energyPerSecond);
+// カードのクリック・放置タイプ反転トグル
+function toggleCardType(cardId) {
+    const card = cards.find(c => c.id === cardId);
+    if (!card || !gameState.awakenedCards.includes(cardId)) return;
+    
+    // 現在の反転タイプを確認し、トグルする
+    const current = gameState.awakenedCardTypes[cardId] || card.type;
+    const nextType = current === 'click' ? 'idle' : 'click';
+    gameState.awakenedCardTypes[cardId] = nextType;
+    
+    recalculateStats();
+    renderCards();
+    renderDeck();
+    updateUI();
+    showToast('システム', `${card.name} のカード属性を「${nextType === 'click' ? 'クリック獲得' : '放置獲得'}」に反転しました`, '🔄');
+}
 
-    const cardEls = document.querySelectorAll('.card');
-    cardEls.forEach(el => {
-        const id = el.dataset.id;
-        const card = cards.find(c => c.id === id);
-        if (card) {
-            let cost;
-            if(buyMode === 'MAX') {
-                cost = calculateMaxPurchase(card, gameState.energy).cost;
-            } else {
-                cost = calculateCumulativeCost(card, parseInt(buyMode));
-            }
-            if (gameState.energy >= cost) {
-                el.classList.remove('disabled');
-            } else {
-                el.classList.add('disabled');
-            }
-            
-            const btnAwaken = el.querySelector('.btn-awaken');
-            if (btnAwaken) {
-                if (gameState.energy >= getAwakenCost(card)) {
-                    btnAwaken.style.opacity = '1';
-                } else {
-                    btnAwaken.style.opacity = '0.5';
-                }
-            }
-        }
-    });
-
-    const btnPrestige = document.getElementById('btn-prestige-open');
-    if (btnPrestige && gameState.unlockedFeatures.prestige) {
-        const newMemories = Math.floor(Math.pow(Math.max(0, Math.log10(gameState.allTimeEnergy / 1e21)), 2));
-        const gained = Math.max(0, newMemories - gameState.memoryPoints);
-        btnPrestige.innerHTML = `🔄 転生する <span style="font-size:10px; opacity:0.8;">(予定: +${gained})</span>`;
+// クリッカー進化ビジュアルの動的更新
+function updateClickerEvolutionVisual() {
+    const container = document.getElementById('core-container');
+    const imgEl = document.getElementById('main-core');
+    if (!container || !imgEl) return;
+    
+    // 所持している「エネルギー」系カードを抽出（IDでソートして最後が最高ランクになるようにする）
+    const ownedEnergyCards = cards
+        .filter(c => c.count > 0 && c.name.includes('エネルギー'))
+        .sort((a, b) => {
+            const idA = parseInt(a.id.split('_')[1]);
+            const idB = parseInt(b.id.split('_')[1]);
+            return idA - idB;
+        });
+    
+    // デフォルト画像
+    let targetSrc = 'assets/ノーマルエネルギー.png';
+    
+    // 最も高ランク（IDが一番大きい）の所持エネルギーカードの画像を使用する
+    if (ownedEnergyCards.length > 0) {
+        const highestEnergyCard = ownedEnergyCards[ownedEnergyCards.length - 1];
+        targetSrc = highestEnergyCard.image;
     }
     
-    const unlockedCount = cardEls.length;
-    if (unlockedCount < cards.length) {
-        const nextCard = cards[unlockedCount - 1];
-        if (nextCard && gameState.energy >= calculateCumulativeCost(nextCard, 1) * 0.5) {
-            renderCards();
+    if (imgEl.src !== targetSrc && !imgEl.src.endsWith(targetSrc)) {
+        imgEl.src = targetSrc;
+    }
+
+    // The user requested to only swap the image without the CSS visual evolution
+    container.className = 'core-container';
+}
+
+// 段階的アンロックの確認
+function checkUnlocks() {
+    let changed = false;
+    if (!gameState.unlockedFeatures.deck && gameState.allTimeEnergy >= 1e12) {
+        gameState.unlockedFeatures.deck = true;
+        showToast('System Override', 'DECK_CONFIGURATION_UNLOCKED', '🃏');
+        changed = true;
+    }
+    if (!gameState.unlockedFeatures.awakening && gameState.allTimeEnergy >= 1e15) {
+        gameState.unlockedFeatures.awakening = true;
+        showToast('System Override', 'CARD_AWAKENING_PROTOCOL_UNLOCKED', '🌟');
+        changed = true;
+    }
+    if (!gameState.unlockedFeatures.prestige && gameState.allTimeEnergy >= 1e21) {
+        gameState.unlockedFeatures.prestige = true;
+        showToast('System Override', 'PRESTIGE_REBIRTH_UNLOCKED', '🔄');
+        changed = true;
+    }
+    if (!gameState.unlockedFeatures.artifact && gameState.allTimeEnergy >= 1e30) {
+        gameState.unlockedFeatures.artifact = true;
+        showToast('System Override', 'ARTIFACT_SLOT_UNLOCKED', '🔮');
+        changed = true;
+    }
+    if (!gameState.unlockedFeatures.advancedTree && gameState.allTimeEnergy >= 1e45) {
+        gameState.unlockedFeatures.advancedTree = true;
+        showToast('System Override', 'ADVANCED_SYSTEM_NODES_UNLOCKED', '⚡');
+        changed = true;
+    }
+    if (changed) {
+        updateUnlockUI();
+        renderCards();
+        renderDeck();
+    }
+}
+
+function updateUnlockUI() {
+    document.getElementById('tab-btn-deck').style.display = gameState.unlockedFeatures.deck ? 'block' : 'none';
+    document.getElementById('btn-prestige-open').style.display = gameState.unlockedFeatures.prestige ? 'block' : 'none';
+    document.getElementById('btn-skilltree-open').style.display = gameState.unlockedFeatures.prestige ? 'block' : 'none';
+    
+    // スキルツリーの「ACCESS_SYSTEM_NODES」ボタンのテキストを進行度に応じてサイバーに変更
+    const treeBtn = document.getElementById('btn-skilltree-open');
+    if (treeBtn) {
+        if (gameState.unlockedFeatures.advancedTree) {
+            treeBtn.innerHTML = '[ACCESS_OVERDRIVE_NODES] ⚡';
+            treeBtn.style.color = '#e040fb';
+            treeBtn.style.borderColor = '#e040fb';
+        } else {
+            treeBtn.innerHTML = '[ACCESS_SYSTEM_NODES]';
+            treeBtn.style.color = '#00ffcc';
+            treeBtn.style.borderColor = '#00ffcc';
         }
     }
 }
@@ -864,6 +1129,43 @@ function handleCoreClick(e) {
     gameState.allTimeEnergy += gameState.energyPerClick;
     updateUI();
     createClickEffect(e);
+    createParticles(e);
+}
+
+function createParticles(e) {
+    const container = document.querySelector('.click-area');
+    const rect = container.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    
+    // 所持エネルギーカードの進化段階によって色を変える
+    const ownedEnergyCardsCount = cards.filter(c => c.count > 0 && c.name.includes('エネルギー')).length;
+    let particleColor = '#00ffff'; // デフォルト：シアン
+    if (ownedEnergyCardsCount >= 25) particleColor = '#ff3d00'; // ブラックホール：赤橙
+    else if (ownedEnergyCardsCount >= 15) particleColor = '#e040fb'; // 銀河：マゼンタ・紫
+    else if (ownedEnergyCardsCount >= 8) particleColor = '#ffa500'; // 恒星：オレンジ・黄色
+    else if (ownedEnergyCardsCount >= 2) particleColor = '#00e5ff'; // クリスタル：明るい水色
+
+    const count = 10;
+    for (let i = 0; i < count; i++) {
+        const p = document.createElement('div');
+        p.className = 'click-particle';
+        p.style.backgroundColor = particleColor;
+        p.style.left = `${x}px`;
+        p.style.top = `${y}px`;
+        
+        // ランダムな飛び散り方向と距離
+        const angle = Math.random() * Math.PI * 2;
+        const speed = Math.random() * 80 + 30; // 30〜110px
+        const dx = Math.cos(angle) * speed;
+        const dy = Math.sin(angle) * speed;
+        
+        p.style.setProperty('--dx', `${dx}px`);
+        p.style.setProperty('--dy', `${dy}px`);
+        
+        container.appendChild(p);
+        setTimeout(() => p.remove(), 600);
+    }
 }
 
 function gameLoop() {
