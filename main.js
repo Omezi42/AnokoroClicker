@@ -3,28 +3,34 @@ let gameState = {
     energy: 0,
     energyPerClick: 1,
     energyPerSecond: 0,
+    lastSaveTime: Date.now(),
+    achievements: [], // 解除済み実績ID
+    goldenClicks: 0
 };
 
 // cardsData.js から読み込み
 let cards = window.generatedCards || [];
 
-// 数値のフォーマット関数
-const FORMAT_SUFFIXES = [
-    '', 'K', 'M', 'B', 'T', 'Qa', 'Qi', 'Sx', 'Sp', 'Oc', 'No', 'Dc', 'Ud', 'Dd', 'Td', 'Qad', 'Qid', 'Sxd', 'Spd', 'Ocd', 'Nod', 'Vg'
+// 実績データ
+const achievementsList = [
+    { id: 'a1', title: 'はじまりの一歩', desc: '初めてカードを購入する', condition: () => cards.some(c => c.count > 0) },
+    { id: 'a2', title: 'クリック名人', desc: 'レアカードをクリックする', condition: () => gameState.goldenClicks > 0 },
+    { id: 'a3', title: '1Kの壁', desc: 'エネルギーが1,000を超える', condition: () => gameState.energy >= 1000 },
+    { id: 'a4', title: 'ミリオネア', desc: 'エネルギーが1,000,000を超える', condition: () => gameState.energy >= 1000000 },
+    { id: 'a5', title: 'カードコレクター', desc: 'カードを合計100枚購入する', condition: () => cards.reduce((a, b) => a + b.count, 0) >= 100 },
+    { id: 'a6', title: 'プロの放置民', desc: '毎秒獲得量が10,000を超える', condition: () => gameState.energyPerSecond >= 10000 }
 ];
+
+// 数値フォーマット関数
+const FORMAT_SUFFIXES = ['', 'K', 'M', 'B', 'T', 'Qa', 'Qi', 'Sx', 'Sp', 'Oc', 'No', 'Dc', 'Ud', 'Dd', 'Td', 'Qad', 'Qid', 'Sxd', 'Spd', 'Ocd', 'Nod', 'Vg'];
 
 function formatNumber(num) {
     if (num < 1000) return Math.floor(num).toString();
-    
     let tier = Math.floor(Math.log10(num) / 3);
-    if (tier >= FORMAT_SUFFIXES.length) {
-        return num.toExponential(2); // 限界を超えたら指数表記
-    }
-    
+    if (tier >= FORMAT_SUFFIXES.length) return num.toExponential(2);
     let suffix = FORMAT_SUFFIXES[tier];
     let scale = Math.pow(10, tier * 3);
     let scaled = num / scale;
-    
     return scaled.toFixed(2) + suffix;
 }
 
@@ -37,47 +43,156 @@ const corePlaceholderEl = document.getElementById('core-placeholder');
 const coreContainerEl = document.getElementById('core-container');
 const cardListEl = document.getElementById('card-list');
 
-// レアカード（ゴールデンクッキー）用要素
-let goldenCardEl = null;
-
 // 初期化
 function init() {
-    // 画像ロード
+    loadGame(); // ロード処理
+
     mainCoreEl.src = 'assets/ノーマルエネルギー.png';
     mainCoreEl.onload = () => {
         mainCoreEl.style.display = 'block';
         corePlaceholderEl.style.display = 'none';
     };
-    mainCoreEl.onerror = () => {
-        corePlaceholderEl.textContent = '画像読み込みエラー';
-    };
 
-    // イベントリスナー
     coreContainerEl.addEventListener('click', handleCoreClick);
 
-    // カードUI生成
-    renderCards();
+    document.getElementById('btn-save').addEventListener('click', () => {
+        saveGame();
+        showToast('システム', 'ゲームを手動セーブしました', '💾');
+    });
 
-    // ゲームループ開始
+    document.getElementById('btn-reset').addEventListener('click', () => {
+        if(confirm('本当にデータをリセットしますか？')) {
+            localStorage.removeItem('anokoroSave');
+            location.reload();
+        }
+    });
+
+    document.getElementById('btn-modal-close').addEventListener('click', () => {
+        document.getElementById('modal-overlay').style.display = 'none';
+    });
+
+    renderCards();
+    recalculateStats();
+
     setInterval(gameLoop, 1000);
+    setInterval(saveGame, 10000); // オートセーブ
+    setInterval(spawnGoldenCard, 10000); // レアカード抽選
+    setInterval(checkAchievements, 1000); // 実績判定
     
-    // レアカード出現ループ
-    setInterval(spawnGoldenCard, 10000); // 10秒ごとに判定
-    
-    // UI初期化
     updateUI();
 }
 
-// クリック処理
+// セーブ機能
+function saveGame() {
+    gameState.lastSaveTime = Date.now();
+    const saveData = {
+        state: gameState,
+        cardCounts: cards.map(c => c.count)
+    };
+    localStorage.setItem('anokoroSave', JSON.stringify(saveData));
+}
+
+// ロード機能とオフライン進行
+function loadGame() {
+    const saved = localStorage.getItem('anokoroSave');
+    if (saved) {
+        try {
+            const parsed = JSON.parse(saved);
+            gameState = { ...gameState, ...parsed.state };
+            
+            if (parsed.cardCounts) {
+                cards.forEach((c, i) => {
+                    c.count = parsed.cardCounts[i] || 0;
+                });
+            }
+
+            // オフライン進行計算
+            const now = Date.now();
+            const timeDiffSec = Math.floor((now - gameState.lastSaveTime) / 1000);
+            
+            if (timeDiffSec > 60 && gameState.energyPerSecond > 0) {
+                // 最大24時間分まで
+                const offlineSec = Math.min(timeDiffSec, 24 * 60 * 60);
+                const offlineGain = offlineSec * gameState.energyPerSecond;
+                gameState.energy += offlineGain;
+                
+                document.getElementById('offline-message').innerHTML = 
+                    `前回プレイから <b>${Math.floor(offlineSec/60)}分</b> 経過しました。<br>` +
+                    `オフライン中の獲得エネルギー:<br> <strong style="color:var(--accent-color); font-size:24px;">+${formatNumber(offlineGain)}</strong>`;
+                document.getElementById('modal-overlay').style.display = 'flex';
+            }
+        } catch (e) {
+            console.error('Save data is corrupted');
+        }
+    }
+}
+
+// 実績判定
+function checkAchievements() {
+    achievementsList.forEach(ach => {
+        if (!gameState.achievements.includes(ach.id)) {
+            if (ach.condition()) {
+                gameState.achievements.push(ach.id);
+                showToast('実績解除！', ach.title, '🏆');
+                recalculateStats(); // ボーナス適用
+            }
+        }
+    });
+}
+
+function showToast(title, message, icon) {
+    const container = document.getElementById('toast-container');
+    const toast = document.createElement('div');
+    toast.className = 'toast';
+    toast.innerHTML = `
+        <div class="toast-icon">${icon}</div>
+        <div class="toast-text">
+            <h4>${title}</h4>
+            <p>${message}</p>
+        </div>
+    `;
+    container.appendChild(toast);
+    setTimeout(() => {
+        if(toast.parentElement) toast.remove();
+    }, 5000);
+}
+
+// ステータス再計算（実績ボーナスと相乗効果）
+function recalculateStats() {
+    let baseClick = 1;
+    let baseIdle = 0;
+    
+    // 相乗効果の判定マイルストーン
+    const milestones = [10, 25, 50, 100, 250, 500, 1000];
+
+    cards.forEach(card => {
+        if (card.count === 0) return;
+        
+        let multiplier = 1;
+        // マイルストーンごとに効果が2倍になる
+        milestones.forEach(m => {
+            if (card.count >= m) multiplier *= 2;
+        });
+        
+        const totalValue = card.value * card.count * multiplier;
+        
+        if (card.type === 'click') baseClick += totalValue;
+        if (card.type === 'idle') baseIdle += totalValue;
+    });
+
+    // 実績1つにつきグローバル生産量 +5%
+    const globalMultiplier = 1 + (gameState.achievements.length * 0.05);
+
+    gameState.energyPerClick = baseClick * globalMultiplier;
+    gameState.energyPerSecond = baseIdle * globalMultiplier;
+}
+
 function handleCoreClick(e) {
     gameState.energy += gameState.energyPerClick;
     updateUI();
-    
-    // エフェクト生成
     createClickEffect(e);
 }
 
-// ゲームループ（毎秒処理）
 function gameLoop() {
     if (gameState.energyPerSecond > 0) {
         gameState.energy += gameState.energyPerSecond;
@@ -85,13 +200,11 @@ function gameLoop() {
     }
 }
 
-// UI更新
 function updateUI() {
     energyCountEl.textContent = formatNumber(gameState.energy);
     energyPerClickEl.textContent = formatNumber(gameState.energyPerClick);
     energyPerSecondEl.textContent = formatNumber(gameState.energyPerSecond);
 
-    // カードの購入可能状態を更新
     const cardEls = document.querySelectorAll('.card');
     cardEls.forEach(el => {
         const id = el.dataset.id;
@@ -106,50 +219,43 @@ function updateUI() {
         }
     });
     
-    // リストの動的更新判定（新しいカードを解放するかどうか）
-    // 一番最後に表示されているカードのコストを余裕で超えたら再描画する等の処理
     const unlockedCount = cardEls.length;
     if (unlockedCount < cards.length) {
-        const nextCard = cards[unlockedCount - 1]; // 表示中の最後のカード
+        const nextCard = cards[unlockedCount - 1];
         if (nextCard && gameState.energy >= calculateCost(nextCard) * 0.5) {
-            // 次のカードが見えるくらいまでエネルギーが貯まったら再描画
             renderCards();
         }
     }
 }
 
-// コスト計算
 function calculateCost(card) {
     return card.baseCost * Math.pow(1.15, card.count);
 }
 
-// カードの購入処理
 function buyCard(cardId) {
     const card = cards.find(c => c.id === cardId);
     if (!card) return;
 
     const cost = calculateCost(card);
-    
     if (gameState.energy >= cost) {
         gameState.energy -= cost;
         card.count++;
 
-        if (card.type === 'click') {
-            gameState.energyPerClick += card.value;
-        } else if (card.type === 'idle') {
-            gameState.energyPerSecond += card.value;
+        // マイルストーン通知
+        const milestones = [10, 25, 50, 100, 250, 500, 1000];
+        if (milestones.includes(card.count)) {
+            showToast('レベルアップ！', `${card.name} の効果が2倍に！`, '✨');
         }
 
-        renderCards(); // コスト再計算と再描画
+        recalculateStats();
+        renderCards();
         updateUI();
     }
 }
 
-// カードUIの生成と描画（プログレッシブ解放）
 function renderCards() {
     cardListEl.innerHTML = '';
     
-    // 表示すべきカードを決定（所持済み + 次の5枚）
     let lastOwnedIndex = -1;
     for (let i = cards.length - 1; i >= 0; i--) {
         if (cards[i].count > 0) {
@@ -158,7 +264,7 @@ function renderCards() {
         }
     }
     
-    const displayCount = Math.min(lastOwnedIndex + 6, cards.length); // 5枚先まで表示
+    const displayCount = Math.min(lastOwnedIndex + 6, cards.length);
     
     for (let i = 0; i < displayCount; i++) {
         const card = cards[i];
@@ -173,13 +279,19 @@ function renderCards() {
         const isNew = card.count === 0 && canBuy;
         const newTag = isNew ? '<span style="color:red; font-size:12px; font-weight:bold; margin-left:10px;">NEW!</span>' : '';
 
+        // 現在のカードの相乗効果倍率を計算
+        let multiplier = 1;
+        [10, 25, 50, 100, 250, 500, 1000].forEach(m => {
+            if (card.count >= m) multiplier *= 2;
+        });
+
         cardEl.innerHTML = `
             <div class="card-image-container">
                 <img src="${card.image}" alt="${card.name}" class="card-img" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiPjxyZWN0IHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIGZpbGw9IiNjY2MiLz48L3N2Zz4='">
             </div>
             <div class="card-info">
-                <div class="card-name">${card.name} ${newTag}</div>
-                <div class="card-desc">${card.descPrefix} ${formatNumber(card.value)}</div>
+                <div class="card-name">${card.name} ${newTag} <span style="color:#007bff; font-size:12px;">(x${multiplier})</span></div>
+                <div class="card-desc">${card.descPrefix} ${formatNumber(card.value * multiplier)}</div>
                 <div class="card-cost">コスト: ${formatNumber(cost)}</div>
             </div>
             <div class="card-count">${card.count}</div>
@@ -189,52 +301,41 @@ function renderCards() {
     }
 }
 
-// クリック時のパーティクルエフェクト
 function createClickEffect(e) {
     const container = document.querySelector('.click-area');
     const containerRect = container.getBoundingClientRect();
-    
     const x = e.clientX - containerRect.left;
     const y = e.clientY - containerRect.top;
 
     const effectEl = document.createElement('div');
     effectEl.className = 'floating-number';
     effectEl.textContent = `+${formatNumber(gameState.energyPerClick)}`;
-    
     effectEl.style.left = `${x - 20}px`;
     effectEl.style.top = `${y - 20}px`;
     
     container.appendChild(effectEl);
-
-    setTimeout(() => {
-        effectEl.remove();
-    }, 1000);
+    setTimeout(() => effectEl.remove(), 1000);
 }
 
-// レアカード（ゴールデンクッキー）の出現処理
+let goldenCardEl = null;
 function spawnGoldenCard() {
-    if (goldenCardEl) return; // 既に存在する場合は無視
-    
-    // 10%の確率で出現
+    if (goldenCardEl) return;
     if (Math.random() > 0.1) return;
 
     goldenCardEl = document.createElement('div');
     goldenCardEl.className = 'golden-card';
     
-    // 画面のランダムな位置に配置
     const x = Math.random() * (window.innerWidth - 100);
     const y = Math.random() * (window.innerHeight - 150);
-    
     goldenCardEl.style.left = `${x}px`;
     goldenCardEl.style.top = `${y}px`;
     
-    // クリックイベント
     goldenCardEl.addEventListener('click', (e) => {
-        // 報酬: 15分間分の毎秒エネルギー（最低でもクリック100回分）
+        gameState.goldenClicks++; // 実績用
+        
         const reward = Math.max(gameState.energyPerClick * 100, gameState.energyPerSecond * 60 * 15);
         gameState.energy += reward;
         
-        // 報酬エフェクト
         const effectEl = document.createElement('div');
         effectEl.className = 'floating-number reward-text';
         effectEl.textContent = `Lucky! +${formatNumber(reward)}`;
@@ -243,15 +344,12 @@ function spawnGoldenCard() {
         document.body.appendChild(effectEl);
         
         setTimeout(() => effectEl.remove(), 2000);
-        
         goldenCardEl.remove();
         goldenCardEl = null;
         updateUI();
     });
 
     document.body.appendChild(goldenCardEl);
-
-    // 15秒で消滅
     setTimeout(() => {
         if (goldenCardEl) {
             goldenCardEl.remove();
@@ -260,5 +358,4 @@ function spawnGoldenCard() {
     }, 15000);
 }
 
-// アプリ起動
 window.addEventListener('DOMContentLoaded', init);
