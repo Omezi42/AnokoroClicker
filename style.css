@@ -251,6 +251,10 @@ body {
     display: flex;
 }
 
+#tab-resonance, #tab-system {
+    overflow-y: auto;
+}
+
 /* Help Tabs */
 .help-tab-nav {
     display: flex;
