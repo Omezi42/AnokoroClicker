@@ -130,7 +130,7 @@ function init() {
     // 転生関連ボタン
     document.getElementById('btn-prestige-open').addEventListener('click', () => {
         document.getElementById('current-memories').textContent = gameState.memoryPoints;
-        let newMemories = Math.floor(Math.cbrt(gameState.allTimeEnergy / 1e21));
+        let newMemories = Math.floor(Math.pow(Math.max(0, Math.log10(gameState.allTimeEnergy / 1e21)), 2));
         let gained = newMemories - gameState.memoryPoints;
         if (gained < 0) gained = 0;
         document.getElementById('pending-memories').textContent = `+${gained}`;
@@ -259,6 +259,10 @@ function loadGame() {
             if (!gameState.unlockedFeatures) gameState.unlockedFeatures = { deck: false, awakening: false, prestige: false };
             if (!gameState.awakenedCards) gameState.awakenedCards = [];
             if (gameState.memoryPoints === undefined) gameState.memoryPoints = 0;
+            const correctMaxMemories = Math.floor(Math.pow(Math.max(0, Math.log10(gameState.allTimeEnergy / 1e21)), 2));
+            if (gameState.memoryPoints > correctMaxMemories) {
+                gameState.memoryPoints = correctMaxMemories;
+            }
             if (!gameState.skillTree) gameState.skillTree = { node_alpha:{level:0}, node_beta:{level:0}, node_gamma:{level:0}, node_delta:{level:0}, node_epsilon:{level:0} };
             
             if (parsed.cardCounts) {
@@ -323,7 +327,7 @@ function updateUnlockUI() {
 
 // 転生処理
 function doPrestige() {
-    let newMemories = Math.floor(Math.cbrt(gameState.allTimeEnergy / 1e21));
+    let newMemories = Math.floor(Math.pow(Math.max(0, Math.log10(gameState.allTimeEnergy / 1e21)), 2));
     let gained = newMemories - gameState.memoryPoints;
     if (gained < 0) gained = 0;
     
@@ -841,7 +845,7 @@ function updateUI() {
 
     const btnPrestige = document.getElementById('btn-prestige-open');
     if (btnPrestige && gameState.unlockedFeatures.prestige) {
-        const newMemories = Math.floor(Math.cbrt(gameState.allTimeEnergy / 1e21));
+        const newMemories = Math.floor(Math.pow(Math.max(0, Math.log10(gameState.allTimeEnergy / 1e21)), 2));
         const gained = Math.max(0, newMemories - gameState.memoryPoints);
         btnPrestige.innerHTML = `🔄 転生する <span style="font-size:10px; opacity:0.8;">(予定: +${gained})</span>`;
     }
