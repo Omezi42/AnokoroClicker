@@ -675,6 +675,23 @@ body {
     100% { filter: hue-rotate(360deg); }
 }
 
+.btn-buy-card {
+    background: var(--primary-color);
+    color: white;
+    border: none;
+    padding: 5px 10px;
+    border-radius: 5px;
+    font-size: 12px;
+    font-weight: bold;
+    cursor: pointer;
+    flex: 1;
+    transition: transform 0.1s, background-color 0.2s;
+}
+.btn-buy-card:hover {
+    background: #00e6b8;
+    transform: scale(1.02);
+}
+
 .btn-awaken {
     background: linear-gradient(45deg, #ff00ff, #00ffff);
     color: white;
@@ -684,9 +701,9 @@ body {
     font-size: 12px;
     cursor: pointer;
     font-weight: bold;
-    margin-top: 5px;
     text-shadow: 1px 1px 2px black;
-    width: 100%;
+    flex: 1;
+    transition: transform 0.1s;
 }
 .btn-awaken:hover {
     transform: scale(1.05);
