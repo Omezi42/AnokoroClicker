@@ -9,16 +9,21 @@
 </head>
 <body>
     <header class="header">
-        <h1>あの頃の自作TCGクリッカー</h1>
-        <div class="energy-display">
-            <div class="stats-panel">
-                <p>エネルギー: <strong id="energy-count" class="highlight">0</strong></p>
-                <p>クリックごとの獲得量: <span id="energy-per-click">1</span></p>
-                <p>毎秒の獲得量: <span id="energy-per-second">0</span></p>
-                <div id="memory-stats" style="display: none; margin-top: 10px; text-align: center;">
-                    <button id="btn-skilltree-open" class="btn" style="background: #1a1a1a; color: #00ffcc; border: 1px solid #00ffcc; width: 100%; font-family: monospace; font-size: 12px;">[ACCESS_SYSTEM_NODES]</button>
-                </div>
-                <button id="btn-prestige-open" class="btn" style="display: none; margin-top: 5px; background: #ff9800; width: 100%;">🔄 転生する</button>
+        <div class="header-left">
+            <h1>あの頃の自作TCGクリッカー</h1>
+            <div class="header-actions">
+                <button id="btn-skilltree-open" class="btn btn-sm" style="display: none; background: #1a1a1a; color: #00ffcc; border: 1px solid #00ffcc; font-family: monospace;">[SYS_NODES]</button>
+                <button id="btn-prestige-open" class="btn btn-sm" style="display: none; background: #ff9800;">🔄 転生</button>
+            </div>
+        </div>
+        <div class="header-right">
+            <div class="energy-display">
+                <span class="energy-label" style="font-size: 20px;">⚡</span>
+                <strong id="energy-count" class="highlight">0</strong>
+            </div>
+            <div class="energy-stats">
+                <span>クリック: <span id="energy-per-click">1</span></span>
+                <span>毎秒: <span id="energy-per-second">0</span></span>
             </div>
         </div>
     </header>

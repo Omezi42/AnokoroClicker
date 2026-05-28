@@ -12,6 +12,7 @@ body {
     margin: 0;
     padding: 0;
     font-family: 'Noto Sans JP', sans-serif;
+    font-variant-numeric: tabular-nums;
     background-color: var(--bg-color);
     color: var(--text-color);
     background-image: 
@@ -25,8 +26,10 @@ body {
 }
 
 .header {
-    text-align: center;
-    padding: 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 20px;
     background: var(--card-bg);
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
@@ -35,17 +38,43 @@ body {
     z-index: 10;
 }
 
-h1 {
-    margin: 0 0 10px 0;
-    font-size: 24px;
+.header-left {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+}
+
+.header-left h1 {
+    margin: 0;
+    font-size: 20px;
     color: var(--primary-color);
 }
 
+.header-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 5px;
+}
+
+.btn-sm {
+    padding: 4px 10px;
+    font-size: 12px;
+}
+
+.header-right {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+}
+
 .energy-display {
-    font-size: 32px;
+    font-size: 28px;
     font-weight: bold;
     color: var(--accent-color);
     text-shadow: 1px 1px 2px rgba(255,255,255,0.8);
+    display: flex;
+    align-items: center;
+    gap: 5px;
 }
 
 .energy-stats {
@@ -53,8 +82,7 @@ h1 {
     color: #666;
     margin-top: 5px;
     display: flex;
-    justify-content: center;
-    gap: 20px;
+    gap: 15px;
 }
 
 .main-content {
@@ -172,10 +200,16 @@ h1 {
     border-color: var(--primary-color);
 }
 
+.card:active:not(.disabled) {
+    transform: translateY(0px) scale(0.98);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
 .card.disabled {
-    opacity: 0.6;
+    opacity: 0.5;
     cursor: not-allowed;
     filter: grayscale(100%);
+    background: rgba(240, 240, 240, 0.9);
 }
 
 .card-image-container {
@@ -326,12 +360,18 @@ h1 {
 .modal-overlay {
     position: fixed;
     top: 0; left: 0; right: 0; bottom: 0;
-    background: rgba(0,0,0,0.5);
+    background: rgba(0,0,0,0.6);
     backdrop-filter: blur(5px);
     display: flex;
     justify-content: center;
     align-items: center;
     z-index: 2000;
+    animation: overlayFadeIn 0.2s ease-out;
+}
+
+@keyframes overlayFadeIn {
+    0% { opacity: 0; backdrop-filter: blur(0px); }
+    100% { opacity: 1; backdrop-filter: blur(5px); }
 }
 
 .modal-content {
@@ -467,24 +507,33 @@ h1 {
 .buy-toggles {
     display: flex;
     justify-content: center;
-    gap: 10px;
+    background: #e9ecef;
+    border-radius: 8px;
+    padding: 4px;
     margin-bottom: 15px;
 }
 
 .buy-toggle {
-    padding: 5px 15px;
-    border: 1px solid var(--primary-color);
-    background: white;
-    color: var(--primary-color);
-    border-radius: 15px;
+    flex: 1;
+    padding: 6px 0;
+    border: none;
+    background: transparent;
+    color: #6c757d;
+    border-radius: 6px;
     cursor: pointer;
     font-weight: bold;
     transition: all 0.2s;
+    font-size: 14px;
+}
+
+.buy-toggle:hover:not(.active) {
+    background: rgba(0,0,0,0.05);
 }
 
 .buy-toggle.active {
-    background: var(--primary-color);
-    color: white;
+    background: white;
+    color: var(--primary-color);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
 /* Deck Slots */
@@ -617,8 +666,40 @@ h1 {
     transform: scale(1.05);
 }
 
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+::-webkit-scrollbar-thumb {
+    background: rgba(0,0,0,0.2);
+    border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: rgba(0,0,0,0.4);
+}
+
 /* Mobile Responsiveness */
 @media (max-width: 768px) {
+    .header {
+        flex-direction: column;
+        gap: 10px;
+    }
+    .header-left, .header-right {
+        align-items: center;
+        width: 100%;
+    }
+    .header-left h1 {
+        font-size: 18px;
+    }
+    .header-actions {
+        justify-content: center;
+        width: 100%;
+    }
+    
     .main-content {
         flex-direction: column;
         padding: 10px;
@@ -640,18 +721,9 @@ h1 {
     }
     
     .energy-stats {
-        flex-direction: column;
-        gap: 5px;
-    }
-    
-    .stats-panel p {
-        margin: 5px 0;
-        font-size: 14px;
-    }
-    
-    h1 {
-        font-size: 16px;
-        margin-bottom: 5px;
+        flex-direction: row;
+        justify-content: center;
+        gap: 15px;
     }
     
     .energy-display {

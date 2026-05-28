@@ -265,9 +265,7 @@ function checkUnlocks() {
 function updateUnlockUI() {
     document.querySelector('.deck-container').style.display = gameState.unlockedFeatures.deck ? 'block' : 'none';
     document.getElementById('btn-prestige-open').style.display = gameState.unlockedFeatures.prestige ? 'block' : 'none';
-    if (gameState.unlockedFeatures.prestige) {
-        document.getElementById('memory-stats').style.display = 'block';
-    }
+    document.getElementById('btn-skilltree-open').style.display = gameState.unlockedFeatures.prestige ? 'block' : 'none';
 }
 
 // 転生処理
