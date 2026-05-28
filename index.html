@@ -11,10 +11,6 @@
     <header class="header">
         <div class="header-left">
             <h1>あの頃の自作TCGクリッカー</h1>
-            <div class="header-actions">
-                <button id="btn-skilltree-open" class="btn btn-sm" style="display: none; background: #1a1a1a; color: #00ffcc; border: 1px solid #00ffcc; font-family: monospace;">[SYS_NODES]</button>
-                <button id="btn-prestige-open" class="btn btn-sm" style="display: none; background: #ff9800;">🔄 転生</button>
-            </div>
         </div>
         <div class="header-right">
             <div class="energy-display">
@@ -37,18 +33,30 @@
             </div>
         </div>
 
-        <div class="upgrade-area">
-            <div class="upgrade-header">
-                <h2>アップグレード（ショップ）</h2>
-                
-                <div class="buy-toggles">
-                    <button class="buy-toggle active" data-amount="1">x1</button>
-                    <button class="buy-toggle" data-amount="10">x10</button>
-                    <button class="buy-toggle" data-amount="100">x100</button>
-                    <button class="buy-toggle" data-amount="MAX">MAX</button>
-                </div>
+        <div class="right-panel">
+            <div class="tab-nav">
+                <button class="tab-btn active" data-target="tab-shop">🛒 ショップ</button>
+                <button class="tab-btn" id="tab-btn-deck" data-target="tab-deck" style="display: none;">🃏 デッキ</button>
+                <button class="tab-btn" data-target="tab-system">⚙️ システム</button>
+            </div>
 
-                <!-- デッキスロット表示エリア -->
+            <!-- SHOP TAB -->
+            <div id="tab-shop" class="tab-pane active">
+                <div class="upgrade-header">
+                    <div class="buy-toggles">
+                        <button class="buy-toggle active" data-amount="1">x1</button>
+                        <button class="buy-toggle" data-amount="10">x10</button>
+                        <button class="buy-toggle" data-amount="100">x100</button>
+                        <button class="buy-toggle" data-amount="MAX">MAX</button>
+                    </div>
+                </div>
+                <div class="card-list" id="card-list">
+                    <!-- カードがJavaScriptによって生成されます -->
+                </div>
+            </div>
+
+            <!-- DECK TAB -->
+            <div id="tab-deck" class="tab-pane">
                 <div class="deck-container">
                     <h3>デッキ（装備中のカード） <span id="deck-synergy-info" style="font-size:12px; color:#ff9800; cursor:help;">[ボーナス詳細]</span></h3>
                     <div class="deck-slots">
@@ -59,20 +67,33 @@
                         <div class="deck-slot" data-index="4"></div>
                     </div>
                 </div>
+                <div style="font-size: 12px; color: #666; padding: 10px; line-height: 1.5;">
+                    <p>※装備を外すには、スロットをクリックして外すボタンを押してください。</p>
+                </div>
             </div>
 
-            <div class="card-list" id="card-list">
-                <!-- カードがJavaScriptによって生成されます -->
+            <!-- SYSTEM TAB -->
+            <div id="tab-system" class="tab-pane" style="padding: 20px;">
+                <h3 style="color: var(--primary-color); border-bottom: 2px solid var(--primary-color); padding-bottom: 10px; margin-top: 0;">システムメニュー</h3>
+                
+                <div style="display: flex; flex-direction: column; gap: 15px; margin-top: 20px;">
+                    <button id="btn-achievements" class="btn btn-info">🏆 実績一覧</button>
+                    <button id="btn-save" class="btn">💾 手動セーブ</button>
+                    
+                    <div style="margin-top: 20px; border-top: 1px dashed #ccc; padding-top: 20px; display: flex; flex-direction: column; gap: 15px;">
+                        <button id="btn-skilltree-open" class="btn" style="display: none; background: #1a1a1a; color: #00ffcc; border: 1px solid #00ffcc; font-family: monospace;">[ACCESS_SYSTEM_NODES]</button>
+                        <button id="btn-prestige-open" class="btn" style="display: none; background: #ff9800;">🔄 転生する</button>
+                    </div>
+
+                    <div style="margin-top: 40px; text-align: center;">
+                        <button id="btn-reset" class="btn btn-danger" style="font-size: 12px;">⚠ データを完全リセット</button>
+                    </div>
+                </div>
             </div>
         </div>
     </main>
 
     <!-- UI Overlays -->
-    <div class="settings-panel">
-        <button id="btn-achievements" class="btn btn-info">🏆 実績</button>
-        <button id="btn-save" class="btn">💾 セーブ</button>
-        <button id="btn-reset" class="btn btn-danger">リセット</button>
-    </div>
 
     <!-- Achievement Toast Container -->
     <div id="toast-container" class="toast-container"></div>

@@ -158,6 +158,19 @@ function init() {
         });
     });
 
+    // Tab Listeners
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+            
+            e.target.classList.add('active');
+            const targetId = e.target.getAttribute('data-target');
+            document.getElementById(targetId).classList.add('active');
+        });
+    });
+
+
     document.getElementById('btn-deck-close').addEventListener('click', () => {
         document.getElementById('deck-modal').style.display = 'none';
     });
@@ -263,7 +276,7 @@ function checkUnlocks() {
 }
 
 function updateUnlockUI() {
-    document.querySelector('.deck-container').style.display = gameState.unlockedFeatures.deck ? 'block' : 'none';
+    document.getElementById('tab-btn-deck').style.display = gameState.unlockedFeatures.deck ? 'block' : 'none';
     document.getElementById('btn-prestige-open').style.display = gameState.unlockedFeatures.prestige ? 'block' : 'none';
     document.getElementById('btn-skilltree-open').style.display = gameState.unlockedFeatures.prestige ? 'block' : 'none';
 }
