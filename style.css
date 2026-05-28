@@ -1,0 +1,281 @@
+:root {
+    --bg-color: #f0f4f8;
+    --text-color: #333;
+    --card-bg: rgba(255, 255, 255, 0.7);
+    --card-border: rgba(255, 255, 255, 0.5);
+    --card-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.15);
+    --primary-color: #007bff;
+    --accent-color: #ff9800;
+}
+
+body {
+    margin: 0;
+    padding: 0;
+    font-family: 'Noto Sans JP', sans-serif;
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    background-image: 
+        radial-gradient(at 0% 0%, hsla(253,16%,7%,0.05) 0, transparent 50%), 
+        radial-gradient(at 50% 0%, hsla(225,39%,30%,0.05) 0, transparent 50%), 
+        radial-gradient(at 100% 0%, hsla(339,49%,30%,0.05) 0, transparent 50%);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+.header {
+    text-align: center;
+    padding: 20px;
+    background: var(--card-bg);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--card-border);
+    box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+    z-index: 10;
+}
+
+h1 {
+    margin: 0 0 10px 0;
+    font-size: 24px;
+    color: var(--primary-color);
+}
+
+.energy-display {
+    font-size: 32px;
+    font-weight: bold;
+    color: var(--accent-color);
+    text-shadow: 1px 1px 2px rgba(255,255,255,0.8);
+}
+
+.energy-stats {
+    font-size: 14px;
+    color: #666;
+    margin-top: 5px;
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+}
+
+.main-content {
+    display: flex;
+    flex: 1;
+    padding: 20px;
+    gap: 30px;
+    max-width: 1200px;
+    margin: 0 auto;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.click-area {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    position: relative;
+}
+
+.core-container {
+    cursor: pointer;
+    transition: transform 0.1s;
+    position: relative;
+    width: 300px;
+    height: 300px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.core-container:active {
+    transform: scale(0.95);
+}
+
+#main-core {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+    filter: drop-shadow(0 0 20px rgba(255, 152, 0, 0.4));
+    animation: float 3s ease-in-out infinite;
+}
+
+@keyframes float {
+    0% { transform: translateY(0px); }
+    50% { transform: translateY(-10px); }
+    100% { transform: translateY(0px); }
+}
+
+.core-placeholder {
+    width: 200px;
+    height: 200px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #e0e0e0, #ffffff);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    box-shadow: var(--card-shadow);
+    color: #999;
+}
+
+.upgrade-area {
+    flex: 1;
+    background: var(--card-bg);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid var(--card-border);
+    border-radius: 20px;
+    padding: 20px;
+    box-shadow: var(--card-shadow);
+    overflow-y: auto;
+    max-height: calc(100vh - 160px);
+}
+
+.upgrade-area h2 {
+    margin-top: 0;
+    font-size: 20px;
+    border-bottom: 2px solid var(--primary-color);
+    padding-bottom: 10px;
+    color: var(--primary-color);
+}
+
+.card-list {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.card {
+    display: flex;
+    background: rgba(255, 255, 255, 0.9);
+    border: 1px solid var(--card-border);
+    border-radius: 12px;
+    padding: 15px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+    align-items: center;
+}
+
+.card:hover:not(.disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 12px rgba(0,0,0,0.1);
+    border-color: var(--primary-color);
+}
+
+.card.disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    filter: grayscale(100%);
+}
+
+.card-image-container {
+    width: 60px;
+    height: 84px;
+    background: #f0f0f0;
+    border-radius: 4px;
+    margin-right: 15px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    overflow: hidden;
+}
+
+.card-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.card-info {
+    flex: 1;
+}
+
+.card-name {
+    font-weight: bold;
+    font-size: 16px;
+    margin-bottom: 5px;
+}
+
+.card-desc {
+    font-size: 12px;
+    color: #666;
+    margin-bottom: 5px;
+}
+
+.card-cost {
+    font-weight: bold;
+    color: var(--accent-color);
+}
+
+.card-count {
+    font-size: 24px;
+    font-weight: bold;
+    color: #ddd;
+    margin-left: 10px;
+}
+
+/* Floating numbers for click effect */
+.floating-number {
+    position: absolute;
+    color: var(--accent-color);
+    font-weight: bold;
+    font-size: 24px;
+    pointer-events: none;
+    animation: floatUp 1s ease-out forwards;
+    text-shadow: 0 0 5px rgba(255,255,255,0.8);
+    z-index: 100;
+}
+
+@keyframes floatUp {
+    0% { transform: translateY(0) scale(1); opacity: 1; }
+    100% { transform: translateY(-50px) scale(1.5); opacity: 0; }
+}
+
+/* Golden Card Effect */
+.golden-card {
+    position: fixed;
+    width: 100px;
+    height: 140px;
+    background: linear-gradient(135deg, #ffd700, #ffa500);
+    border: 3px solid #fff;
+    border-radius: 10px;
+    box-shadow: 0 0 20px #ffd700, inset 0 0 15px rgba(255,255,255,0.8);
+    cursor: pointer;
+    z-index: 1000;
+    animation: goldPulse 2s infinite alternate, goldWobble 4s infinite linear;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.golden-card::after {
+    content: "RARE!";
+    color: white;
+    font-weight: bold;
+    font-size: 20px;
+    text-shadow: 1px 1px 2px #000;
+    animation: pulseText 1s infinite alternate;
+}
+
+@keyframes goldPulse {
+    0% { filter: drop-shadow(0 0 10px #ffd700); transform: scale(1); }
+    100% { filter: drop-shadow(0 0 30px #ffa500); transform: scale(1.1); }
+}
+
+@keyframes goldWobble {
+    0% { transform: rotate(-5deg); }
+    50% { transform: rotate(5deg); }
+    100% { transform: rotate(-5deg); }
+}
+
+@keyframes pulseText {
+    0% { opacity: 0.7; }
+    100% { opacity: 1; }
+}
+
+.reward-text {
+    font-size: 32px;
+    color: #ffd700;
+    text-shadow: 0 0 10px #ff0, 0 0 20px #f00;
+    z-index: 1100;
+    animation: floatUp 2s ease-out forwards;
+}

@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>あの頃の自作TCGクリッカー</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <header class="header">
+        <h1>あの頃の自作TCGクリッカー</h1>
+        <div class="energy-display">
+            <span class="energy-label">エネルギー:</span>
+            <span id="energy-count">0</span>
+        </div>
+        <div class="energy-stats">
+            <span>毎秒: <span id="energy-per-second">0</span></span>
+            <span>クリック: <span id="energy-per-click">1</span></span>
+        </div>
+    </header>
+
+    <main class="main-content">
+        <div class="click-area">
+            <div id="core-container" class="core-container">
+                <!-- ここにノーマルエネルギーの画像が入ります -->
+                <img src="" alt="エネルギーコア" id="main-core" style="display: none;">
+                <div id="core-placeholder" class="core-placeholder">コア読込中</div>
+            </div>
+        </div>
+
+        <div class="upgrade-area">
+            <h2>カード (アップグレード)</h2>
+            <div id="card-list" class="card-list">
+                <!-- カードはJavaScriptで動的に生成されます -->
+            </div>
+        </div>
+    </main>
+
+    <script src="cardsData.js"></script>
+    <script src="main.js"></script>
+</body>
+</html>
