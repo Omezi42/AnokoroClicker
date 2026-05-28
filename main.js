@@ -40,6 +40,7 @@ let selectingDeckSlot = -1;
 let lastGlobalSynergyMultiplier = 1.0;
 let lastIndividualBonus = {};
 let lastAchievementMultiplier = 1.0;
+let lastMemoryMultiplier = 1.0;
 let lastAlphaBonus = 1.0;
 let lastDeckDetails = [];
 let cards = window.generatedCards || [];
@@ -595,14 +596,16 @@ function recalculateStats() {
     });
 
     const achievementMultiplier = 1 + (gameState.achievements.length * 0.05);
+    const memoryMultiplier = 1 + (gameState.memoryPoints * 0.1);
 
-    gameState.energyPerClick = baseClick * achievementMultiplier * globalSynergyMultiplier;
-    gameState.energyPerSecond = baseIdle * achievementMultiplier * globalSynergyMultiplier;
+    gameState.energyPerClick = baseClick * achievementMultiplier * memoryMultiplier * globalSynergyMultiplier;
+    gameState.energyPerSecond = baseIdle * achievementMultiplier * memoryMultiplier * globalSynergyMultiplier;
 
     // モーダル用に保存
     lastGlobalSynergyMultiplier = globalSynergyMultiplier;
     lastIndividualBonus = individualBonus;
     lastAchievementMultiplier = achievementMultiplier;
+    lastMemoryMultiplier = memoryMultiplier;
     lastAlphaBonus = 1 + alphaLv * 1.0;
     
     lastDeckDetails = cards.filter(c => c.count > 0).map(card => {
@@ -623,7 +626,7 @@ function recalculateStats() {
 
     const synergyBtn = document.getElementById('btn-synergy-open');
     if (synergyBtn) {
-        synergyBtn.title = `実績ボーナス: x${achievementMultiplier.toFixed(2)}\nシステムボーナス: x${globalSynergyMultiplier.toFixed(2)}`;
+        synergyBtn.title = `実績: x${achievementMultiplier.toFixed(2)} | メモリー: x${memoryMultiplier.toFixed(2)} | システム: x${globalSynergyMultiplier.toFixed(2)}`;
     }
 }
 
@@ -635,9 +638,10 @@ function renderSynergyDetails() {
         <h4 style="margin: 0 0 5px 0; color: #333;">🌍 全体ボーナス (乗算)</h4>
         <ul style="margin: 0; padding-left: 20px; color: #555;">
             <li>🏆 <strong>実績ボーナス:</strong> x${lastAchievementMultiplier.toFixed(2)}</li>
+            <li>🔄 <strong>メモリーボーナス:</strong> x${lastMemoryMultiplier.toFixed(2)}</li>
             <li>⚙️ <strong>システムノード(Alpha):</strong> x${lastAlphaBonus.toFixed(2)}</li>
             <li>🃏 <strong>デッキ全体シナジー:</strong> x${(lastGlobalSynergyMultiplier / lastAlphaBonus).toFixed(2)}</li>
-            <li style="list-style: none; margin-top: 5px; font-weight: bold; color: #d32f2f;">🔥 最終全体倍率: x${(lastAchievementMultiplier * lastGlobalSynergyMultiplier).toFixed(2)}</li>
+            <li style="list-style: none; margin-top: 5px; font-weight: bold; color: #d32f2f;">🔥 最終全体倍率: x${(lastAchievementMultiplier * lastMemoryMultiplier * lastGlobalSynergyMultiplier).toFixed(2)}</li>
         </ul>
     </div>`;
 
