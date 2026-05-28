@@ -39,6 +39,7 @@
                 <button class="tab-btn active" data-target="tab-shop">🛒 ショップ</button>
                 <button class="tab-btn" id="tab-btn-deck" data-target="tab-deck" style="display: none;">🃏 デッキ</button>
                 <button class="tab-btn" id="tab-btn-resonance" data-target="tab-resonance" style="display: none; background: #ff5722; color: #fff;">🔥 共鳴陣</button>
+                <button class="tab-btn" id="tab-btn-awakening" data-target="tab-awakening" style="display: none; background: linear-gradient(45deg, #9c27b0, #673ab7); color: #fff;">🌌 覚醒地</button>
                 <button class="tab-btn" data-target="tab-system">⚙️ システム</button>
             </div>
 
@@ -143,6 +144,39 @@
                 </div>
             </div>
 
+            <!-- AWAKENING TAB -->
+            <div id="tab-awakening" class="tab-pane" style="padding: 10px; overflow-y: auto;">
+                <h3 style="color: #e040fb; border-bottom: 2px solid #e040fb; padding-bottom: 10px; margin-top: 0;">🌌 覚醒地</h3>
+                
+                <div style="background: rgba(224, 64, 251, 0.1); padding: 10px; border-radius: 5px; margin-bottom: 15px; font-size: 13px;">
+                    <p style="margin: 0;">現在の覚醒トークン: <strong id="awakening-token-count" style="color:#e040fb; font-size: 16px;">0</strong></p>
+                    <p style="margin: 5px 0 0 0; color: #aaa;">覚醒アーティファクトの生成や、時間の加速に使用します。</p>
+                </div>
+                
+                <div style="display: flex; gap: 15px; margin-bottom: 20px; flex-direction: column;">
+                    <!-- アーティファクトガチャ -->
+                    <div style="border: 1px solid #e040fb; border-radius: 8px; padding: 10px; background: rgba(224, 64, 251, 0.05);">
+                        <h4 style="color: #e040fb; margin-top: 0;">💎 覚醒アーティファクトの生成</h4>
+                        <p style="font-size: 11px; color: #aaa;">覚醒トークンを1つ消費して、ランダムな効果を持つアーティファクトを1つ生成します。</p>
+                        <button id="btn-forge-artifact" class="btn" style="width: 100%; background: linear-gradient(45deg, #e040fb, #7c4dff);">生成する (コスト: 1 トークン)</button>
+                        
+                        <div id="artifact-inventory" style="margin-top: 15px; display: grid; grid-template-columns: repeat(auto-fill, minmax(60px, 1fr)); gap: 10px; max-height: 150px; overflow-y: auto;">
+                            <!-- アーティファクト一覧 -->
+                        </div>
+                    </div>
+                    
+                    <!-- 時間加速器 -->
+                    <div style="border: 1px solid #00e5ff; border-radius: 8px; padding: 10px; background: rgba(0, 229, 255, 0.05);">
+                        <h4 style="color: #00e5ff; margin-top: 0;">⏳ 覚醒の刻（時間加速）</h4>
+                        <p style="font-size: 11px; color: #aaa;">トークンを10消費して、30秒間ゲーム内の処理速度を爆発的に加速させます。</p>
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                            <span style="font-size: 12px; color: #00e5ff;">残り時間: <span id="time-acc-timer" style="font-weight: bold; font-size: 14px;">0s</span></span>
+                        </div>
+                        <button id="btn-activate-time" class="btn" style="width: 100%; background: linear-gradient(45deg, #00b8d4, #00e5ff);">加速開始 (コスト: 10 トークン)</button>
+                    </div>
+                </div>
+            </div>
+
             <!-- SYSTEM TAB -->
             <div id="tab-system" class="tab-pane" style="padding: 20px;">
                 <h3 style="color: var(--primary-color); border-bottom: 2px solid var(--primary-color); padding-bottom: 10px; margin-top: 0;">システムメニュー</h3>
@@ -157,6 +191,7 @@
                         <button id="btn-skilltree-open" class="btn" style="display: none; background: #1a1a1a; color: #00ffcc; border: 1px solid #00ffcc; font-family: monospace;">[ACCESS_SYSTEM_NODES]</button>
                         <button id="btn-prestige-open" class="btn" style="display: none; background: #ff9800;">🔄 転生する</button>
                         <button id="btn-resonance-open" class="btn" style="display: none; background: linear-gradient(135deg, #ff5722 0%, #2196f3 100%); color: white; border: none; font-weight: bold; text-shadow: 1px 1px 2px rgba(0,0,0,0.5);">✨ 共鳴地に移行（共鳴召喚）</button>
+                        <button id="btn-true-awakening" class="btn" style="display: none; background: linear-gradient(45deg, #9c27b0, #673ab7); color: white; border: none; font-weight: bold; text-shadow: 1px 1px 2px rgba(0,0,0,0.5);">🌌 真の覚醒（全てをリセット）</button>
                     </div>
 
                     <div style="margin-top: 40px; text-align: center;">
@@ -236,6 +271,9 @@
                     
                     <h4 style="margin-bottom: 5px; color: #ff5722;">🔥 共鳴地とは？</h4>
                     <p style="margin-top: 0; color: #555;">未開地の到達点（エネルギー 1e100）を超えると解放される新天地です。<br>未開地でのすべての進捗（メモリーやシステムノード含む）をリセットして**「共鳴召喚」**を行うことで「共鳴トークン」を獲得します。<br>天使ルート（放置力・シナジー特化）か炎ルート（クリック・アクティブ特化）を選んで強化し、さらに過酷な「試練」をクリアすることで強大な力を得ます。</p>
+
+                    <h4 style="margin-bottom: 5px; color: #e040fb;">🌌 覚醒地と真の覚醒とは？</h4>
+                    <p style="margin-top: 0; color: #555;">エネルギーが <strong>e200</strong> に到達すると解放される最終領域です。<br>共鳴地までの全ての進捗をリセットして**「真の覚醒」**を行うことで「覚醒トークン」を獲得します。<br>獲得したトークンで、ゲーム内の基本パラメータを極限まで引き上げる強力な効果を持つ**「覚醒アーティファクト」**を生成・装備（最大1つ）することができます。<br>また、トークンを10消費して30秒間ゲームのスピードを10倍に加速する**「時間加速（覚醒の刻）」**を発動させ、e308（ゲームクリア）への到達を目指します。</p>
                 </div>
             </div>
         </div>

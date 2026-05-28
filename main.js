@@ -21,7 +21,8 @@ let gameState = {
         prestige: false,
         artifact: false,
         advancedTree: false,
-        resonance: false
+        resonance: false,
+        trueAwakening: false
     },
     resonanceTokens: 0,
     activeTrial: null,
@@ -49,7 +50,13 @@ let gameState = {
         node_artifact_forge: { level: 0 },
         node_synergy_overdrive: { level: 0 },
         node_memory_resonance: { level: 0 }
-    }
+    },
+    awakeningTokens: 0,
+    artifacts: [],
+    equippedArtifact: null,
+    timeAccActive: false,
+    timeAccTimeLeft: 0,
+    gameCleared: false
 };
 
 // スキルツリー（System Nodes）定義
@@ -154,7 +161,13 @@ const achievementsList = [
     { id: 'cl_1', title: 'クリック入門', desc: '累計100回クリックする', condition: () => gameState.totalClicks >= 100 },
     { id: 'cl_2', title: 'クリッカー', desc: '累計1000回クリックする', condition: () => gameState.totalClicks >= 1000 },
     { id: 'cl_3', title: '指の達人', desc: '累計10000回クリックする', condition: () => gameState.totalClicks >= 10000 },
-    { id: 'cl_4', title: '無限の指', desc: '累計100000回クリックする', condition: () => gameState.totalClicks >= 100000 }
+    { id: 'cl_4', title: '無限の指', desc: '累計100000回クリックする', condition: () => gameState.totalClicks >= 100000 },
+    
+    // === 覚醒システム系 ===
+    { id: 'aw_1', title: '真の覚醒者', desc: '真の覚醒を行い、覚醒トークンを初めて獲得する', condition: () => gameState.awakeningTokens > 0 },
+    { id: 'aw_2', title: '古の遺物', desc: 'アーティファクトを初めて生成する', condition: () => gameState.artifacts && gameState.artifacts.length > 0 },
+    { id: 'aw_3', title: '神話の発見', desc: 'レジェンダリーまたはミシックのアーティファクトを所持する', condition: () => gameState.artifacts && gameState.artifacts.some(a => a.rarity === 'Legendary' || a.rarity === 'Mythic') },
+    { id: 'aw_4', title: '加速された刻', desc: '時間加速を初めて発動する', condition: () => gameState.timeAccActive === true }
 ];
 
 const FORMAT_SUFFIXES = ['', 'K', 'M', 'B', 'T', 'Qa', 'Qi', 'Sx', 'Sp', 'Oc', 'No', 'Dc', 'Ud', 'Dd', 'Td', 'Qad', 'Qid', 'Sxd', 'Spd', 'Ocd', 'Nod', 'Vg', 'Uvg', 'Dvg', 'Tvg', 'Qavg', 'Qivg', 'Sxvg', 'Spvg', 'Ocvg', 'Novg', 'Tg', 'Utg', 'Dtg', 'Ttg', 'Qatg', 'Qitg', 'Sxtg', 'Sptg', 'Octg', 'Notg', 'Qag'];
@@ -440,10 +453,37 @@ function init() {
         document.getElementById('synergy-modal').style.display = 'none';
     });
 
+    // 真の覚醒ボタン
+    const btnTrueAwakening = document.getElementById('btn-true-awakening');
+    if (btnTrueAwakening) {
+        btnTrueAwakening.addEventListener('click', () => {
+            if (gameState.allTimeEnergy < 1e200) {
+                showToast('エラー', 'エネルギーが1e200に到達していません', '⚠');
+                return;
+            }
+            if (confirm('真の覚醒を実行しますか？\n共鳴トークン、試練のクリア状況を含む全ての進行がリセットされます。\n覚醒トークンを獲得します。')) {
+                doTrueAwakening();
+            }
+        });
+    }
+    
+    // アーティファクト生成ボタン
+    const btnForgeArtifact = document.getElementById('btn-forge-artifact');
+    if (btnForgeArtifact) {
+        btnForgeArtifact.addEventListener('click', forgeArtifact);
+    }
+    
+    // 時間加速ボタン
+    const btnActivateTime = document.getElementById('btn-activate-time');
+    if (btnActivateTime) {
+        btnActivateTime.addEventListener('click', activateTimeAcceleration);
+    }
+
     renderDeck();
     renderCards();
     recalculateStats();
     updateUnlockUI();
+    renderAwakeningUI();
 
     setInterval(gameLoop, 1000);
     setInterval(saveGame, 10000);
@@ -486,8 +526,24 @@ function loadGame() {
                 if (gameState.unlockedFeatures.artifact === undefined) gameState.unlockedFeatures.artifact = false;
                 if (gameState.unlockedFeatures.advancedTree === undefined) gameState.unlockedFeatures.advancedTree = false;
                 if (gameState.unlockedFeatures.resonance === undefined) gameState.unlockedFeatures.resonance = false;
+                if (gameState.unlockedFeatures.trueAwakening === undefined) gameState.unlockedFeatures.trueAwakening = false;
             }
             if (gameState.resonanceTokens === undefined) gameState.resonanceTokens = 0;
+            if (gameState.awakeningTokens === undefined) gameState.awakeningTokens = 0;
+            if (!gameState.artifacts) gameState.artifacts = [];
+            if (gameState.equippedArtifact === undefined) gameState.equippedArtifact = null;
+            if (gameState.timeAccActive === undefined) gameState.timeAccActive = false;
+            if (gameState.timeAccTimeLeft === undefined) gameState.timeAccTimeLeft = 0;
+            if (gameState.gameCleared === undefined) gameState.gameCleared = false;
+            if (gameState.equippedArtifact && gameState.artifacts) {
+                const found = gameState.artifacts.find(a => a.id === gameState.equippedArtifact.id);
+                if (found) {
+                    gameState.equippedArtifact = found;
+                } else {
+                    gameState.equippedArtifact = null;
+                }
+            }
+            
             if (gameState.activeTrial === undefined) gameState.activeTrial = null;
             if (!gameState.completedTrials) gameState.completedTrials = { angel: false, fire: false };
             if (!gameState.resonanceTree) gameState.resonanceTree = { angel_path_1: false, angel_path_2: false, fire_path_1: false, fire_path_2: false };
@@ -547,35 +603,7 @@ function getSkillLevel(nodeId) {
     return gameState.skillTree[nodeId] ? gameState.skillTree[nodeId].level : 0;
 }
 
-// 段階的アンロックの確認
-function checkUnlocks() {
-    let changed = false;
-    if (!gameState.unlockedFeatures.deck && gameState.allTimeEnergy >= 1e12) {
-        gameState.unlockedFeatures.deck = true;
-        showToast('System Override', 'DECK_CONFIGURATION_UNLOCKED', '🃏');
-        changed = true;
-    }
-    if (!gameState.unlockedFeatures.awakening && gameState.allTimeEnergy >= 1e15) {
-        gameState.unlockedFeatures.awakening = true;
-        showToast('System Override', 'CARD_AWAKENING_PROTOCOL_UNLOCKED', '🌟');
-        changed = true;
-    }
-    if (!gameState.unlockedFeatures.prestige && gameState.allTimeEnergy >= 1e21) {
-        gameState.unlockedFeatures.prestige = true;
-        showToast('System Override', 'PRESTIGE_REBIRTH_UNLOCKED', '🔄');
-        changed = true;
-    }
-    if (changed) {
-        updateUnlockUI();
-        renderCards();
-    }
-}
-
-function updateUnlockUI() {
-    document.getElementById('tab-btn-deck').style.display = gameState.unlockedFeatures.deck ? 'block' : 'none';
-    document.getElementById('btn-prestige-open').style.display = gameState.unlockedFeatures.prestige ? 'block' : 'none';
-    document.getElementById('btn-skilltree-open').style.display = gameState.unlockedFeatures.prestige ? 'block' : 'none';
-}
+// 段階的アンロックの確認とUI更新は後半（旧1738行目付近）で一元管理されています。
 
 // 転生処理
 function doPrestige() {
@@ -676,6 +704,242 @@ function doResonance() {
         effectEl.remove();
         showToast('RESONANCE SUMMONING', `すべてが炎に包まれた... 共鳴トークン +${gained}`, '🔥');
     }, 3100);
+}
+
+// ====== 第4弾: 覚醒地（Phase 4）システム ======
+
+// --- 真の覚醒（Tier 3 Prestige） ---
+function doTrueAwakening() {
+    let gained = 0;
+    if (gameState.allTimeEnergy >= 1e200) {
+        gained = Math.max(1, Math.floor(Math.pow(2, Math.log10(gameState.allTimeEnergy / 1e200))));
+    }
+    
+    // 全リセット
+    gameState.energy = 0;
+    gameState.energyPerClick = 1;
+    gameState.energyPerSecond = 0;
+    gameState.goldenClicks = 0;
+    gameState.allTimeEnergy = 0;
+    gameState.deck = [null, null, null, null, null];
+    gameState.awakenedCards = [];
+    gameState.awakenedCardTypes = {};
+    gameState.memoryPoints = 0;
+    gameState.resonanceTokens = 0;
+    gameState.resonanceTree = { angel_path_1: false, angel_path_2: false, fire_path_1: false, fire_path_2: false };
+    gameState.activeTrial = null;
+    gameState.completedTrials = { angel: false, fire: false };
+    gameState.fireOverloadStacks = 0;
+    
+    for (const key in gameState.skillTree) {
+        gameState.skillTree[key].level = 0;
+    }
+    
+    gameState.unlockedFeatures.deck = false;
+    gameState.unlockedFeatures.awakening = false;
+    gameState.unlockedFeatures.prestige = false;
+    gameState.unlockedFeatures.artifact = false;
+    gameState.unlockedFeatures.advancedTree = false;
+    gameState.unlockedFeatures.resonance = false;
+    // trueAwakening は保持
+    
+    gameState.awakeningTokens += gained;
+    
+    cards.forEach(c => c.count = 0);
+    
+    recalculateStats();
+    renderCards();
+    renderDeck();
+    updateUI();
+    updateUnlockUI();
+    renderAwakeningUI();
+    saveGame();
+    
+    // 演出
+    const effectEl = document.createElement('div');
+    effectEl.style.cssText = 'position:fixed;top:0;left:0;width:100vw;height:100vh;background:linear-gradient(45deg,#9c27b0,#673ab7);z-index:99999;opacity:1;transition:opacity 3s ease;pointer-events:none;';
+    document.body.appendChild(effectEl);
+    setTimeout(() => effectEl.style.opacity = '0', 100);
+    setTimeout(() => {
+        effectEl.remove();
+        showToast('TRUE AWAKENING', `全てが初期化された... 覚醒トークン +${gained}`, '🌌');
+    }, 3100);
+}
+
+// --- アーティファクト生成システム ---
+const ARTIFACT_RARITIES = [
+    { name: 'Common', color: '#aaa', weight: 50, buffCount: 1, powerRange: [1.0, 1.5] },
+    { name: 'Rare', color: '#4fc3f7', weight: 25, buffCount: 1, powerRange: [1.5, 2.5] },
+    { name: 'Epic', color: '#ab47bc', weight: 15, buffCount: 2, powerRange: [2.0, 4.0] },
+    { name: 'Legendary', color: '#ffa726', weight: 8, buffCount: 2, powerRange: [3.0, 8.0] },
+    { name: 'Mythic', color: '#ff1744', weight: 2, buffCount: 3, powerRange: [5.0, 15.0] }
+];
+
+const ARTIFACT_BUFF_TYPES = [
+    { id: 'speed', name: 'ゲーム速度', format: (v) => `x${v.toFixed(2)}`, apply: 'speed' },
+    { id: 'power', name: '全生産力べき乗', format: (v) => `^${v.toFixed(3)}`, apply: 'power' },
+    { id: 'idle', name: '放置倍率', format: (v) => `x${v.toFixed(2)}`, apply: 'idle' },
+    { id: 'click', name: 'クリック倍率', format: (v) => `x${v.toFixed(2)}`, apply: 'click' },
+    { id: 'resonance', name: '共鳴トークン獲得', format: (v) => `x${v.toFixed(2)}`, apply: 'resonance' }
+];
+
+function rollArtifactRarity() {
+    const total = ARTIFACT_RARITIES.reduce((s, r) => s + r.weight, 0);
+    let roll = Math.random() * total;
+    for (const r of ARTIFACT_RARITIES) {
+        roll -= r.weight;
+        if (roll <= 0) return r;
+    }
+    return ARTIFACT_RARITIES[0];
+}
+
+function generateArtifact() {
+    const rarity = rollArtifactRarity();
+    const buffs = [];
+    const usedTypes = new Set();
+    
+    for (let i = 0; i < rarity.buffCount; i++) {
+        let buffType;
+        do {
+            buffType = ARTIFACT_BUFF_TYPES[Math.floor(Math.random() * ARTIFACT_BUFF_TYPES.length)];
+        } while (usedTypes.has(buffType.id) && usedTypes.size < ARTIFACT_BUFF_TYPES.length);
+        usedTypes.add(buffType.id);
+        
+        const [min, max] = rarity.powerRange;
+        let value;
+        if (buffType.id === 'power') {
+            // べき乗は控えめに: 1.01 ~ 1.05
+            value = 1 + (Math.random() * 0.04 + 0.01) * (max / 5);
+        } else {
+            value = min + Math.random() * (max - min);
+        }
+        buffs.push({ type: buffType.id, name: buffType.name, value: parseFloat(value.toFixed(3)), format: buffType.format(value) });
+    }
+    
+    return {
+        id: 'af_' + Date.now() + '_' + Math.floor(Math.random() * 1000),
+        rarity: rarity.name,
+        color: rarity.color,
+        buffs: buffs
+    };
+}
+
+function forgeArtifact() {
+    if (gameState.awakeningTokens < 1) {
+        showToast('エラー', '覚醒トークンが足りません', '⚠');
+        return;
+    }
+    gameState.awakeningTokens -= 1;
+    const artifact = generateArtifact();
+    gameState.artifacts.push(artifact);
+    
+    // 最大20個まで保持
+    if (gameState.artifacts.length > 20) {
+        gameState.artifacts.shift();
+    }
+    
+    showToast(`${artifact.rarity} アーティファクト！`, artifact.buffs.map(b => `${b.name}: ${b.format}`).join(', '), '💎');
+    renderAwakeningUI();
+    saveGame();
+}
+
+function equipArtifact(artifactId) {
+    const af = gameState.artifacts.find(a => a.id === artifactId);
+    if (!af) return;
+    gameState.equippedArtifact = af;
+    recalculateStats();
+    renderAwakeningUI();
+    updateUI();
+    saveGame();
+    showToast('装備完了', `${af.rarity} アーティファクトを装備しました`, '⚔️');
+}
+
+function deleteArtifact(artifactId) {
+    if (gameState.equippedArtifact && gameState.equippedArtifact.id === artifactId) {
+        gameState.equippedArtifact = null;
+    }
+    gameState.artifacts = gameState.artifacts.filter(a => a.id !== artifactId);
+    recalculateStats();
+    renderAwakeningUI();
+    updateUI();
+    saveGame();
+}
+
+function renderAwakeningUI() {
+    const tokenEl = document.getElementById('awakening-token-count');
+    if (tokenEl) tokenEl.textContent = gameState.awakeningTokens;
+    
+    const timerEl = document.getElementById('time-acc-timer');
+    if (timerEl) timerEl.textContent = gameState.timeAccTimeLeft > 0 ? `${Math.ceil(gameState.timeAccTimeLeft)}s` : '停止中';
+    
+    const invEl = document.getElementById('artifact-inventory');
+    if (!invEl) return;
+    invEl.innerHTML = '';
+    
+    // 装備中アーティファクト表示
+    if (gameState.equippedArtifact) {
+        const eqDiv = document.createElement('div');
+        eqDiv.style.cssText = `grid-column: 1/-1; border: 2px solid ${gameState.equippedArtifact.color}; border-radius: 8px; padding: 8px; background: rgba(0,0,0,0.3); margin-bottom: 5px;`;
+        eqDiv.innerHTML = `<div style="font-size:10px;color:${gameState.equippedArtifact.color};font-weight:bold;">⚔️ 装備中: ${gameState.equippedArtifact.rarity}</div>
+            <div style="font-size:9px;color:#ddd;margin-top:3px;">${gameState.equippedArtifact.buffs.map(b => `${b.name}: ${b.format}`).join(' | ')}</div>`;
+        invEl.appendChild(eqDiv);
+    }
+    
+    gameState.artifacts.forEach(af => {
+        const isEquipped = gameState.equippedArtifact && gameState.equippedArtifact.id === af.id;
+        const div = document.createElement('div');
+        div.style.cssText = `border: 1px solid ${af.color}; border-radius: 6px; padding: 5px; background: rgba(0,0,0,0.3); cursor: pointer; text-align: center; position: relative;`;
+        if (isEquipped) div.style.boxShadow = `0 0 8px ${af.color}`;
+        
+        div.innerHTML = `<div style="font-size:16px;">💎</div>
+            <div style="font-size:8px;color:${af.color};font-weight:bold;">${af.rarity}</div>
+            <div style="font-size:7px;color:#aaa;margin-top:2px;">${af.buffs.map(b => b.format).join('<br>')}</div>
+            <div style="display:flex;gap:2px;margin-top:3px;">
+                <button onclick="equipArtifact('${af.id}')" style="flex:1;font-size:8px;padding:2px;border:none;background:${isEquipped ? '#555' : '#4caf50'};color:#fff;border-radius:3px;cursor:pointer;">${isEquipped ? '装備中' : '装備'}</button>
+                <button onclick="deleteArtifact('${af.id}')" style="font-size:8px;padding:2px;border:none;background:#f44336;color:#fff;border-radius:3px;cursor:pointer;">✕</button>
+            </div>`;
+        invEl.appendChild(div);
+    });
+}
+
+// --- 時間加速（覚醒の刻） ---
+function activateTimeAcceleration() {
+    if (gameState.awakeningTokens < 10) {
+        showToast('エラー', '覚醒トークンが10個必要です', '⚠');
+        return;
+    }
+    gameState.awakeningTokens -= 10;
+    gameState.timeAccActive = true;
+    gameState.timeAccTimeLeft = 30; // 30秒間
+    showToast('覚醒の刻', '時間が加速した！ 30秒間、処理速度が10倍に！', '⏳');
+    renderAwakeningUI();
+    saveGame();
+}
+
+function getTimeAccMultiplier() {
+    return gameState.timeAccActive ? 10 : 1;
+}
+
+// --- ゲームクリア演出 ---
+function showGameClearScreen() {
+    const overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.95);z-index:100000;display:flex;justify-content:center;align-items:center;flex-direction:column;animation:fadeIn 2s ease;';
+    overlay.innerHTML = `
+        <div style="text-align:center;color:#fff;max-width:600px;padding:30px;">
+            <h1 style="font-size:48px;color:#ffd700;text-shadow:0 0 30px #ffd700;margin-bottom:20px;animation:pulseText 2s infinite alternate;">🏆 INFINITY 🏆</h1>
+            <h2 style="font-size:24px;color:#e040fb;margin-bottom:30px;">1e308 到達 — ゲームクリア</h2>
+            <p style="font-size:16px;line-height:1.8;color:#ccc;margin-bottom:20px;">
+                あの頃の記憶を辿る旅が、ついに終わりを迎えました。<br><br>
+                放課後の教室で、ノートの切れ端に描いたカードたち。<br>
+                「こんなゲームがあったらいいな」と夢中で作ったルール。<br>
+                友達と交換して、対戦して、笑い合った日々。<br><br>
+                そのすべてが、このエネルギーの中に宿っていました。<br><br>
+                <span style="color:#ffd700;font-size:20px;">ありがとう、あの頃の自分。</span>
+            </p>
+            <button onclick="this.parentElement.parentElement.remove()" style="padding:15px 40px;font-size:16px;background:linear-gradient(45deg,#ffd700,#ff9800);border:none;border-radius:30px;color:#000;font-weight:bold;cursor:pointer;margin-top:20px;">もう一度遊ぶ</button>
+        </div>
+    `;
+    document.body.appendChild(overlay);
 }
 
 function renderSkillTree() {
@@ -1074,8 +1338,32 @@ function recalculateStats() {
         globalSynergyMultiplier = 1; // シナジー無効
     }
 
-    gameState.energyPerClick = baseClick * achievementMultiplier * memoryMultiplier * globalSynergyMultiplier;
-    gameState.energyPerSecond = baseIdle * achievementMultiplier * memoryMultiplier * globalSynergyMultiplier;
+    // 覚醒アーティファクトの効果適用
+    let artifactClickMult = 1;
+    let artifactIdleMult = 1;
+    let artifactPowerExp = 1;
+    if (gameState.equippedArtifact && gameState.equippedArtifact.buffs) {
+        gameState.equippedArtifact.buffs.forEach(buff => {
+            switch (buff.type) {
+                case 'click': artifactClickMult *= buff.value; break;
+                case 'idle': artifactIdleMult *= buff.value; break;
+                case 'power': artifactPowerExp *= buff.value; break;
+                // speed と resonance は別の場所で処理
+            }
+        });
+    }
+    
+    let finalClick = baseClick * achievementMultiplier * memoryMultiplier * globalSynergyMultiplier * artifactClickMult;
+    let finalIdle = baseIdle * achievementMultiplier * memoryMultiplier * globalSynergyMultiplier * artifactIdleMult;
+    
+    // べき乗強化（非常に強力なので最後に適用）
+    if (artifactPowerExp > 1) {
+        finalClick = Math.pow(finalClick, artifactPowerExp);
+        finalIdle = Math.pow(finalIdle, artifactPowerExp);
+    }
+    
+    gameState.energyPerClick = finalClick;
+    gameState.energyPerSecond = finalIdle;
 
     // UI更新用変数
     window.lastAngelMult = angelMult;
@@ -1444,12 +1732,22 @@ function checkUnlocks() {
     if (!gameState.unlockedFeatures.advancedTree && gameState.allTimeEnergy >= 1e30) {
         gameState.unlockedFeatures.advancedTree = true;
         showToast('SYSTEM OVERRIDE', 'Advanced Tree Unlocked.', '⚡');
-        updateUnlockUI();
+        changed = true;
     }
     if (!gameState.unlockedFeatures.resonance && gameState.allTimeEnergy >= 1e100) {
         gameState.unlockedFeatures.resonance = true;
         showToast('RESONANCE DETECTED', '共鳴地へのゲートが開きました。', '🔥');
-        updateUnlockUI();
+        changed = true;
+    }
+    if (!gameState.unlockedFeatures.trueAwakening && gameState.allTimeEnergy >= 1e200) {
+        gameState.unlockedFeatures.trueAwakening = true;
+        showToast('REALITY BREAK', '覚醒地への扉が開かれた...', '🌌');
+        changed = true;
+    }
+    // ゲームクリア判定
+    if (!gameState.gameCleared && gameState.allTimeEnergy >= 1e308) {
+        gameState.gameCleared = true;
+        showGameClearScreen();
     }
     if (changed) {
         updateUnlockUI();
@@ -1464,6 +1762,11 @@ function updateUnlockUI() {
     document.getElementById('btn-skilltree-open').style.display = gameState.unlockedFeatures.prestige ? 'block' : 'none';
     document.getElementById('btn-resonance-open').style.display = gameState.unlockedFeatures.resonance ? 'block' : 'none';
     document.getElementById('tab-btn-resonance').style.display = gameState.unlockedFeatures.resonance ? 'block' : 'none';
+    
+    const btnTrueAwakening = document.getElementById('btn-true-awakening');
+    if (btnTrueAwakening) btnTrueAwakening.style.display = gameState.unlockedFeatures.trueAwakening ? 'block' : 'none';
+    const tabBtnAwakening = document.getElementById('tab-btn-awakening');
+    if (tabBtnAwakening) tabBtnAwakening.style.display = gameState.unlockedFeatures.trueAwakening ? 'block' : 'none';
     
     // スキルツリーの「ACCESS_SYSTEM_NODES」ボタンのテキストを進行度に応じてサイバーに変更
     const treeBtn = document.getElementById('btn-skilltree-open');
@@ -1513,6 +1816,25 @@ function renderStats() {
         html += `<li><strong>試練クリア:</strong> ${trialStatus.length > 0 ? trialStatus.join(' / ') : 'なし'}</li>`;
         if (gameState.activeTrial) {
             html += `<li><strong style="color:red;">⚠ 試練進行中:</strong> ${gameState.activeTrial === 'angel' ? '天使の試練' : '炎の試練'}</li>`;
+        }
+    }
+    
+    if (gameState.unlockedFeatures.trueAwakening) {
+        html += `<hr style="border: 0; border-top: 1px dashed #ccc; margin: 10px 0;">`;
+        html += `<li><strong>覚醒トークン:</strong> <span style="color:#9c27b0; font-weight:bold;">${gameState.awakeningTokens.toLocaleString()}</span></li>`;
+        
+        if (gameState.equippedArtifact) {
+            const af = gameState.equippedArtifact;
+            const buffsStr = af.buffs.map(b => `${b.name}: ${b.format}`).join(' | ');
+            html += `<li><strong>装備中遺物:</strong> <span style="color:${af.color}; font-weight:bold;">[${af.rarity}]</span> <span style="font-size:12px; color:#555;">(${buffsStr})</span></li>`;
+        } else {
+            html += `<li><strong>装備中遺物:</strong> <span style="color:#888;">なし</span></li>`;
+        }
+        
+        if (gameState.timeAccActive) {
+            html += `<li><strong>時間加速:</strong> <span style="color:#ff1744; font-weight:bold;">発動中 (${Math.ceil(gameState.timeAccTimeLeft)}秒)</span></li>`;
+        } else {
+            html += `<li><strong>時間加速:</strong> <span style="color:#888;">停止中</span></li>`;
         }
     }
     
@@ -1635,15 +1957,40 @@ function createParticles(e) {
 
 function gameLoop() {
     gameState.playTimeSeconds++;
+    
+    // 時間加速の残り時間管理
+    if (gameState.timeAccActive && gameState.timeAccTimeLeft > 0) {
+        gameState.timeAccTimeLeft -= 1;
+        if (gameState.timeAccTimeLeft <= 0) {
+            gameState.timeAccActive = false;
+            gameState.timeAccTimeLeft = 0;
+            showToast('覚醒の刻', '時間加速が終了しました', '⏳');
+        }
+        renderAwakeningUI();
+    }
+    
+    const timeMultiplier = getTimeAccMultiplier();
+    
+    // アーティファクトの速度バフ
+    let artifactSpeedMult = 1;
+    if (gameState.equippedArtifact && gameState.equippedArtifact.buffs) {
+        gameState.equippedArtifact.buffs.forEach(buff => {
+            if (buff.type === 'speed') artifactSpeedMult *= buff.value;
+        });
+    }
+    
+    const totalSpeedMult = timeMultiplier * artifactSpeedMult;
+    
     // Fire Overload の減衰
     if (gameState.fireOverloadStacks > 0) {
-        gameState.fireOverloadStacks = Math.max(0, gameState.fireOverloadStacks - 5); // 毎秒5スタック減衰
+        gameState.fireOverloadStacks = Math.max(0, gameState.fireOverloadStacks - 5);
         recalculateStats();
     }
 
     if (gameState.energyPerSecond > 0) {
-        gameState.energy += gameState.energyPerSecond;
-        gameState.allTimeEnergy += gameState.energyPerSecond;
+        const gained = gameState.energyPerSecond * totalSpeedMult;
+        gameState.energy += gained;
+        gameState.allTimeEnergy += gained;
         updateUI();
     }
     
@@ -1853,4 +2200,6 @@ function checkTrialClear() {
     }
 }
 
+window.equipArtifact = equipArtifact;
+window.deleteArtifact = deleteArtifact;
 window.addEventListener('DOMContentLoaded', init);
