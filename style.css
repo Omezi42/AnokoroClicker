@@ -119,6 +119,8 @@ body {
     background: radial-gradient(circle, #00d2ff 0%, #007bff 70%, #0056b3 100%);
     box-shadow: 0 0 20px rgba(0, 123, 255, 0.4), inset 0 0 15px rgba(255, 255, 255, 0.6);
     transition: transform 0.1s, background 0.5s, box-shadow 0.5s;
+    user-select: none;
+    -webkit-user-select: none;
 }
 
 .core-container:active {
@@ -178,6 +180,9 @@ body {
     object-fit: contain;
     filter: drop-shadow(0 0 15px rgba(255, 255, 255, 0.8));
     animation: float 4s ease-in-out infinite;
+    pointer-events: none;
+    user-select: none;
+    -webkit-user-drag: none;
 }
 
 @keyframes float {

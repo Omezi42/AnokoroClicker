@@ -1124,6 +1124,55 @@ function updateUnlockUI() {
     }
 }
 
+function updateUI() {
+    energyCountEl.textContent = formatNumber(gameState.energy);
+    energyPerClickEl.textContent = formatNumber(gameState.energyPerClick);
+    energyPerSecondEl.textContent = formatNumber(gameState.energyPerSecond);
+
+    const cardEls = document.querySelectorAll('.card');
+    cardEls.forEach(el => {
+        const id = el.dataset.id;
+        const card = cards.find(c => c.id === id);
+        if (card) {
+            let cost;
+            if(buyMode === 'MAX') {
+                cost = calculateMaxPurchase(card, gameState.energy).cost;
+            } else {
+                cost = calculateCumulativeCost(card, parseInt(buyMode));
+            }
+            if (gameState.energy >= cost) {
+                el.classList.remove('disabled');
+            } else {
+                el.classList.add('disabled');
+            }
+            
+            const btnAwaken = el.querySelector('.btn-awaken');
+            if (btnAwaken) {
+                if (gameState.energy >= getAwakenCost(card)) {
+                    btnAwaken.style.opacity = '1';
+                } else {
+                    btnAwaken.style.opacity = '0.5';
+                }
+            }
+        }
+    });
+
+    const btnPrestige = document.getElementById('btn-prestige-open');
+    if (btnPrestige && gameState.unlockedFeatures.prestige) {
+        const newMemories = Math.floor(Math.pow(Math.max(0, Math.log10(gameState.allTimeEnergy / 1e21)), 2));
+        const gained = Math.max(0, newMemories - gameState.memoryPoints);
+        btnPrestige.innerHTML = `🔄 転生する <span style="font-size:10px; opacity:0.8;">(予定: +${gained})</span>`;
+    }
+    
+    const unlockedCount = cardEls.length;
+    if (unlockedCount < cards.length) {
+        const nextCard = cards[unlockedCount - 1];
+        if (nextCard && gameState.energy >= calculateCumulativeCost(nextCard, 1) * 0.5) {
+            renderCards();
+        }
+    }
+}
+
 function handleCoreClick(e) {
     gameState.energy += gameState.energyPerClick;
     gameState.allTimeEnergy += gameState.energyPerClick;
